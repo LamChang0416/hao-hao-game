@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>阿布時光探險家 🚀 (跨時空冒險)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 3D & Animation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@900&family=Noto+Sans+TC:wght@900&display=swap');
+        
+        body, html {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+            background: #000;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #portal-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: env(safe-area-inset-top) 1.5rem env(safe-area-inset-bottom) 1.5rem;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 32px;
+            pointer-events: auto;
+        }
+
+        /* Clock Styling */
+        #clock-container {
+            position: relative;
+            width: min(70vw, 350px);
+            aspect-ratio: 1;
+            margin: 0 auto;
+            pointer-events: auto;
+        }
+
+        .clock-num { font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 900; fill: #1e293b; text-anchor: middle; dominant-baseline: central; }
+        .hit-area { stroke: transparent; stroke-width: 40; cursor: grab; }
+        .hit-area:active { cursor: grabbing; }
+
+        /* Era Reward Badge */
+        #era-badge {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -150%);
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            padding: 10px 24px;
+            border-radius: 99px;
+            color: #451a03;
+            font-weight: 900;
+            font-size: 1.2rem;
+            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.4);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Pilot Area */
+        .pilot-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .chat-bubble {
+            background: white;
+            border-radius: 20px;
+            padding: 12px 18px;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #1e293b;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            position: relative;
+            max-width: 250px;
+            pointer-events: auto;
+        }
+        .chat-bubble::after {
+            content: ''; position: absolute; left: -12px; top: 50%;
+            transform: translateY(-50%);
+            border-width: 10px 12px 10px 0; border-style: solid; border-color: transparent white transparent transparent;
+        }
+
+        /* Digital Display */
+        #digital-box {
+            background: #0f172a;
+            border: 4px solid #334155;
+            color: #2dd4bf;
+            font-family: 'monospace';
+            text-shadow: 0 0 10px #2dd4bf;
+        }
+
+        #start-screen {
+            background: radial-gradient(circle at center, #1e1b4b, #000);
+            z-index: 100;
+        }
+
+        .btn-magic {
+            background: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%);
+            box-shadow: 0 8px 0 0 #0f766e, 0 15px 30px rgba(13, 148, 136, 0.3);
+            transition: all 0.1s;
+        }
+        .btn-magic:active {
+            transform: translateY(6px);
+            box-shadow: 0 2px 0 0 #0f766e, 0 5px 15px rgba(13, 148, 136, 0.2);
+        }
+
+        @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .float-anim { animation: floating 3s ease-in-out infinite; }
+    </style>
+</head>
+<body>
+
+    <div id="portal-canvas"></div>
+
+    <div id="ui-overlay">
+        <!-- Top HUD -->
+        <div class="mt-4 flex flex-col items-center">
+            <div id="era-badge">恐龍時代 🦖</div>
+            <div class="glass-panel px-8 py-4 text-center">
+                <div class="text-teal-400 text-xs font-bold uppercase tracking-[0.2em] mb-1">時光機座標 (目標時間)</div>
+                <div id="target-time" class="text-5xl font-black text-white">12:00</div>
+            </div>
+        </div>
+
+        <!-- Middle: Interactive Clock -->
+        <div id="clock-container">
+            <svg id="clock-svg" viewBox="0 0 200 200" class="w-full h-full drop-shadow-[0_0_20px_rgba(45,212,191,0.3)]">
+                <!-- Outer Ring -->
+                <circle cx="100" cy="100" r="95" fill="white" />
+                <circle cx="100" cy="100" r="95" fill="none" stroke="#2dd4bf" stroke-width="4" stroke-opacity="0.5" />
+                
+                <g id="ticks-layer"></g>
+
+                <!-- Minute Hand -->
+                <g id="min-group" transform="rotate(0 100 100)">
+                    <line x1="100" y1="100" x2="100" y2="25" stroke="rgba(0,0,0,0.1)" stroke-width="6" stroke-linecap="round" transform="translate(2, 2)" />
+                    <line x1="100" y1="100" x2="100" y2="25" stroke="#0d9488" stroke-width="6" stroke-linecap="round" />
+                    <circle cx="100" cy="25" r="4" fill="#2dd4bf" />
+                    <line class="hit-area" x1="100" y1="100" x2="100" y2="25" id="min-hit" />
+                </g>
+
+                <!-- Hour Hand -->
+                <g id="hour-group" transform="rotate(0 100 100)">
+                    <line x1="100" y1="100" x2="100" y2="50" stroke="rgba(0,0,0,0.1)" stroke-width="10" stroke-linecap="round" transform="translate(2, 2)" />
+                    <line x1="100" y1="100" x2="100" y2="50" stroke="#f43f5e" stroke-width="10" stroke-linecap="round" />
+                    <line class="hit-area" x1="100" y1="100" x2="100" y2="50" id="hour-hit" />
+                </g>
+
+                <!-- Center Point -->
+                <circle cx="100" cy="100" r="7" fill="#1e293b" />
+                <circle cx="100" cy="100" r="3" fill="#2dd4bf" />
+            </svg>
+        </div>
+
+        <!-- Bottom Controls -->
+        <div class="mb-4 flex flex-col items-center">
+            <div class="pilot-area">
+                <div id="abu-pilot" class="float-anim cursor-pointer pointer-events-auto" onclick="pokeAbu()">
+                    <svg width="80" height="80" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="#333" />
+                        <!-- Space/Time Helmet -->
+                        <circle cx="50" cy="45" r="32" fill="rgba(45,212,191,0.1)" stroke="#2dd4bf" stroke-width="2" />
+                        <circle cx="35" cy="40" r="7" fill="white" /><circle cx="36" cy="40" r="3" fill="black" />
+                        <circle cx="65" cy="40" r="7" fill="white" /><circle cx="64" cy="40" r="3" fill="black" />
+                        <path d="M 45 50 L 55 50 L 50 62 Z" fill="#fbbf24" />
+                        <rect x="25" y="70" width="50" height="15" fill="#0d9488" rx="4" />
+                    </svg>
+                </div>
+                <div class="chat-bubble" id="abu-dialog">
+                    澔澔，調整時光機，帶我回古代看恐龍！🦕
+                </div>
+            </div>
+
+            <div class="flex gap-4 w-full max-w-sm pointer-events-auto">
+                <div id="digital-box" class="flex-grow rounded-2xl flex items-center justify-center text-4xl font-bold py-4">
+                    <span id="digital-display">12:00</span>
+                </div>
+                <button onclick="checkAnswer()" class="btn-magic text-white px-8 rounded-2xl text-2xl font-black">
+                    GO! 🛸
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Overlay -->
+    <div id="start-screen" class="absolute inset-0 flex flex-col items-center justify-center text-center p-10">
+        <h1 class="text-6xl sm:text-8xl font-black text-white drop-shadow-2xl mb-4 italic tracking-tighter">TIME EXPLORER</h1>
+        <p class="text-2xl sm:text-3xl text-teal-300 font-bold mb-16">阿布時光探險家 ⏳澔澔啟航任務</p>
+        
+        <div class="relative w-40 h-40 mb-16">
+            <div class="absolute inset-0 bg-teal-400 rounded-full blur-3xl opacity-20"></div>
+            <svg viewBox="0 0 100 100" class="w-full h-full relative">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#2dd4bf" stroke-width="4" stroke-dasharray="10,5" />
+                <path d="M 50 15 L 50 50 L 75 50" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" />
+            </svg>
+        </div>
+
+        <button onclick="initGame()" class="btn-magic text-white text-4xl font-black px-16 py-8 rounded-full">
+            開啟時空之門 ⚡
+        </button>
+    </div>
+
+    <script>
+        // --- 3D Portal System (Three.js) ---
+        let scene, camera, renderer, tunnel;
+        function setupPortal() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('portal-canvas').appendChild(renderer.domElement);
+
+            // Create Star Field Tunnel
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            for (let i = 0; i < 5000; i++) {
+                const z = Math.random() * -1000;
+                const radius = 200 + Math.random() * 300;
+                const angle = Math.random() * Math.PI * 2;
+                vertices.push(Math.cos(angle) * radius, Math.sin(angle) * radius, z);
+            }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            const material = new THREE.PointsMaterial({ color: 0x2dd4bf, size: 2, transparent: true, opacity: 0.6 });
+            tunnel = new THREE.Points(geometry, material);
+            scene.add(tunnel);
+
+            camera.position.z = 50;
+            animate();
+        }
+
+        let speedMultiplier = 1;
+        function animate() {
+            requestAnimationFrame(animate);
+            tunnel.rotation.z += 0.001 * speedMultiplier;
+            const positions = tunnel.geometry.attributes.position.array;
+            for (let i = 2; i < positions.length; i += 3) {
+                positions[i] += 2 * speedMultiplier;
+                if (positions[i] > 100) positions[i] = -900;
+            }
+            tunnel.geometry.attributes.position.needsUpdate = true;
+            renderer.render(scene, camera);
+        }
+
+        // --- Clock & Game Logic ---
+        let targetH = 3, targetM = 0;
+        let currentH = 12, currentM = 0;
+        let activeHand = null;
+        let eraIndex = 0;
+        const eras = [
+            { name: "恐龍時代 🦖", color: "#22c55e", msg: "帶我回古代看恐龍！" },
+            { name: "機器人未來 🤖", color: "#3b82f6", msg: "去未來看看機器人！" },
+            { name: "古埃及金字塔 🐫", color: "#f59e0b", msg: "看看大大的金字塔！" },
+            { name: "月球探險 🌙", color: "#94a3b8", msg: "我們去月亮上跳舞！" }
+        ];
+
+        function initGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            setupPortal();
+            drawTicks();
+            nextTask();
+            updateClock();
+        }
+
+        function drawTicks() {
+            const layer = document.getElementById('ticks-layer');
+            for (let i = 0; i < 60; i++) {
+                const angle = i * 6;
+                const isHour = i % 5 === 0;
+                const rad = (angle - 90) * (Math.PI / 180);
+                
+                const r1 = isHour ? 82 : 88;
+                const r2 = 92;
+                const x1 = 100 + r1 * Math.cos(rad);
+                const y1 = 100 + r1 * Math.sin(rad);
+                const x2 = 100 + r2 * Math.cos(rad);
+                const y2 = 100 + r2 * Math.sin(rad);
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+                line.setAttribute('stroke', isHour ? '#1e293b' : '#94a3b8');
+                line.setAttribute('stroke-width', isHour ? '3' : '1');
+                layer.appendChild(line);
+
+                if (isHour) {
+                    const textRad = (angle - 90) * (Math.PI / 180);
+                    const nx = 100 + 70 * Math.cos(textRad);
+                    const ny = 100 + 70 * Math.sin(textRad);
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', nx); text.setAttribute('y', ny + 1);
+                    text.setAttribute('class', 'clock-num');
+                    text.textContent = i === 0 ? '12' : i / 5;
+                    layer.appendChild(text);
+                }
+            }
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'zh-TW';
+            msg.rate = 1.25;
+            window.speechSynthesis.speak(msg);
+            document.getElementById('abu-dialog').innerText = text;
+        }
+
+        function nextTask() {
+            targetH = Math.floor(Math.random() * 12) + 1;
+            targetM = Math.floor(Math.random() * 12) * 5;
+            const era = eras[eraIndex];
+            document.getElementById('target-time').innerText = 
+                `${targetH.toString().padStart(2, '0')}:${targetM.toString().padStart(2, '0')}`;
+            document.getElementById('era-badge').innerText = era.name;
+            gsap.to('#era-badge', { opacity: 1, y: -130, duration: 0.5, ease: "back.out" });
+            
+            speak(`澔澔，調整時光機到 ${targetH} 點 ${targetM === 0 ? '整' : targetM + '分'}，${era.msg}`);
+        }
+
+        function updateClock() {
+            document.getElementById('min-group').setAttribute('transform', `rotate(${currentM * 6} 100 100)`);
+            const hAngle = (currentH % 12) * 30 + (currentM / 60) * 30;
+            document.getElementById('hour-group').setAttribute('transform', `rotate(${hAngle} 100 100)`);
+            document.getElementById('digital-display').innerText = 
+                `${currentH.toString().padStart(2, '0')}:${currentM.toString().padStart(2, '0')}`;
+        }
+
+        // --- Interaction Support ---
+        const clockSvg = document.getElementById('clock-svg');
+        function getAngle(e) {
+            const rect = clockSvg.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const ex = e.clientX || e.touches[0].clientX;
+            const ey = e.clientY || e.touches[0].clientY;
+            let a = Math.atan2(ex - cx, -(ey - cy)) * (180 / Math.PI);
+            return a < 0 ? a + 360 : a;
+        }
+
+        function startHandDrag(e, type) {
+            activeHand = type;
+            clockSvg.setPointerCapture(e.pointerId);
+            speedMultiplier = 3; // Visual feedback
+        }
+
+        window.addEventListener('pointermove', (e) => {
+            if (!activeHand) return;
+            const angle = getAngle(e);
+            if (activeHand === 'min') {
+                const snapped = Math.round(angle / 6) * 6; // Snap to minute
+                currentM = (snapped / 360) * 60 % 60;
+            } else {
+                const snapped = Math.round(angle / 30) * 30; // Snap to hour
+                currentH = (snapped / 360) * 12;
+                if (currentH === 0) currentH = 12;
+            }
+            updateClock();
+        });
+
+        window.addEventListener('pointerup', () => { 
+            activeHand = null; 
+            speedMultiplier = 1;
+        });
+
+        document.getElementById('min-hit').addEventListener('pointerdown', (e) => startHandDrag(e, 'min'));
+        document.getElementById('hour-hit').addEventListener('pointerdown', (e) => startHandDrag(e, 'hour'));
+
+        function checkAnswer() {
+            if (currentH === targetH && currentM === targetM) {
+                handleVictory();
+            } else {
+                speak("時空座標不太對喔！再檢查一下指針的位置！");
+                gsap.to('#digital-box', { x: 10, repeat: 3, yoyo: true, duration: 0.05 });
+            }
+        }
+
+        function handleVictory() {
+            speak(`座標正確！時光躍遷開始！澔澔太聰明了！🌟`);
+            confetti({ particleCount: 200, spread: 80, origin: { y: 0.5 } });
+            speedMultiplier = 50; // Visual "jump"
+            
+            gsap.to('#portal-canvas', { filter: 'brightness(5)', duration: 0.5, onComplete: () => {
+                eraIndex = (eraIndex + 1) % eras.length;
+                nextTask();
+                gsap.to('#portal-canvas', { filter: 'brightness(1)', duration: 1 });
+                speedMultiplier = 1;
+            }});
+        }
+
+        function pokeAbu() {
+            speak(["別戳我，快出發吧！", "澔澔加油，你最會看時間了！", "我想去看恐龍！"][Math.floor(Math.random()*3)]);
+        }
+
+        window.addEventListener('resize', () => {
+            if(renderer) {
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+            }
+        });
+    </script>
+</body>
+</html>

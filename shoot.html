@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>阿布太空巡邏隊 🚀 (重力神射手)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Physics Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    
+    <!-- Confetti & Animations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@900&family=Noto+Sans+TC:wght@900&display=swap');
+        
+        body, html {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+            background: #000;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #game-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        /* Immersive Cockpit Overlay */
+        #cockpit-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: env(safe-area-inset-top) 1rem env(safe-area-inset-bottom) 1rem;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            pointer-events: auto;
+        }
+
+        /* Slingshot Visuals */
+        #slingshot-ui {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 120px;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        /* A-Bu Pilot Area */
+        .pilot-area {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 180px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            pointer-events: auto;
+        }
+
+        .chat-bubble {
+            background: white;
+            border-radius: 18px;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: #1e293b;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            position: relative;
+            max-width: 200px;
+        }
+        .chat-bubble::after {
+            content: ''; position: absolute; left: -10px; top: 50%;
+            transform: translateY(-50%);
+            border-width: 8px 10px 8px 0; border-style: solid; border-color: transparent white transparent transparent;
+        }
+
+        /* Space Background Elements */
+        .nebula {
+            position: absolute;
+            width: 100%; height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(76, 29, 149, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(30, 58, 138, 0.4) 0%, transparent 50%);
+            z-index: 0;
+            filter: blur(40px);
+        }
+
+        /* Target Pulsing Effect */
+        .target-active {
+            animation: pulse-gold 1.5s infinite;
+        }
+        @keyframes pulse-gold {
+            0% { filter: drop-shadow(0 0 5px #fbbf24); }
+            50% { filter: drop-shadow(0 0 20px #fbbf24); }
+            100% { filter: drop-shadow(0 0 5px #fbbf24); }
+        }
+
+        #start-screen {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            z-index: 100;
+        }
+
+        .btn-action {
+            background: linear-gradient(to bottom, #4ade80, #22c55e);
+            box-shadow: 0 6px 0 0 #14532d;
+            transition: all 0.1s;
+        }
+        .btn-action:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 0 #14532d;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="nebula"></div>
+    <div id="game-canvas"></div>
+
+    <div id="cockpit-overlay">
+        <!-- Top HUD -->
+        <div class="flex justify-between items-start mt-4">
+            <div class="glass-panel px-6 py-3 flex items-center gap-4">
+                <div class="text-indigo-300 text-sm font-bold uppercase tracking-widest">目標任務</div>
+                <div id="target-display" class="text-4xl font-black text-yellow-400">1</div>
+            </div>
+            
+            <div class="glass-panel px-6 py-3 text-right">
+                <div class="text-indigo-300 text-sm font-bold uppercase tracking-widest">任務能量</div>
+                <div id="level-dots" class="text-xl text-indigo-400">⚪⚪⚪⚪⚪</div>
+            </div>
+        </div>
+
+        <!-- Pilot Side Panel -->
+        <div class="pilot-area">
+            <div id="abu-pilot" class="cursor-pointer" onclick="pokeAbu()">
+                <svg width="70" height="70" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="#333" />
+                    <!-- Space Helmet -->
+                    <circle cx="50" cy="45" r="30" fill="rgba(255,bbf7d0,0.2)" stroke="#bbf7d0" stroke-width="2" />
+                    <circle cx="35" cy="40" r="6" fill="white" /><circle cx="36" cy="40" r="3" fill="black" />
+                    <circle cx="65" cy="40" r="6" fill="white" /><circle cx="64" cy="40" r="3" fill="black" />
+                    <path d="M 45 50 L 55 50 L 50 60 Z" fill="#fbbf24" />
+                </svg>
+            </div>
+            <div class="chat-bubble" id="abu-dialog">
+                澔澔，準備好了嗎？前方發現能量星！🚀
+            </div>
+        </div>
+
+        <!-- Slingshot Guide -->
+        <div id="slingshot-ui">
+            <svg width="120" height="120" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-dasharray="5,5" />
+                <path d="M 50 10 L 50 90 M 10 50 L 90 50" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
+                <circle id="drag-knob" cx="50" cy="50" r="15" fill="#ef4444" stroke="white" stroke-width="4" />
+            </svg>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="absolute inset-0 flex flex-col items-center justify-center p-10 text-center text-white">
+        <h1 class="text-6xl sm:text-8xl font-black mb-6 tracking-tighter drop-shadow-2xl italic">SPACE RANGER</h1>
+        <p class="text-2xl sm:text-3xl font-bold text-indigo-200 mb-16">阿布太空巡邏隊 🚀澔澔任務啟動</p>
+        
+        <div class="relative w-48 h-48 mb-16">
+            <div class="absolute inset-0 bg-yellow-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
+            <svg viewBox="0 0 100 100" class="relative w-full h-full drop-shadow-xl">
+                 <circle cx="50" cy="50" r="45" fill="#333" />
+                 <path d="M 20 80 L 10 95 L 90 95 L 80 80 Z" fill="#ef4444" />
+                 <circle cx="50" cy="45" r="30" fill="rgba(255,255,255,0.1)" stroke="white" stroke-width="2" />
+                 <path d="M 45 50 L 55 50 L 50 60 Z" fill="#fbbf24" />
+            </svg>
+        </div>
+
+        <button onclick="initGame()" class="btn-action px-16 py-8 rounded-full text-4xl font-black">
+            加入巡邏隊！⚡
+        </button>
+    </div>
+
+    <!-- Success Feedback Overlay -->
+    <div id="success-panel" class="hidden absolute inset-0 z-[50] flex flex-col items-center justify-center bg-indigo-900/40 backdrop-blur-sm pointer-events-none">
+        <div class="text-[120px] mb-4 animate-bounce">🌟</div>
+        <h2 class="text-6xl font-black text-white italic tracking-tighter shadow-xl">MISSION CLEAR!</h2>
+    </div>
+
+    <script>
+        const { Engine, Render, Runner, World, Bodies, Composite, Events, Vector, Body } = Matter;
+        let engine, runner, render;
+        let currentTarget = 1;
+        let totalTargets = 5;
+        let isDragging = false;
+        let dragStartPos = { x: 0, y: 0 };
+        let currentLevel = 1;
+
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+
+        // --- Audio Generation ---
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audio;
+        function playSfx(freq=600, type='sine', dur=0.2) {
+            if (!audio) audio = new AudioCtx();
+            const osc = audio.createOscillator();
+            const gain = audio.createGain();
+            osc.type = type; osc.connect(gain); gain.connect(audio.destination);
+            osc.frequency.setValueAtTime(freq, audio.currentTime);
+            gain.gain.setValueAtTime(0.2, audio.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audio.currentTime + dur);
+            osc.start(); osc.stop(audio.currentTime + dur);
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'zh-TW';
+            msg.rate = 1.3;
+            window.speechSynthesis.speak(msg);
+            document.getElementById('abu-dialog').innerText = text;
+        }
+
+        function pokeAbu() {
+            speak(["澔澔，準備好瞄準了嗎？", "加油！你是最棒的太空巡邏員！", "發現目標了！向後拉再放開就能發射喔！", "轟的一聲，把能量星收起來！"][Math.floor(Math.random()*4)]);
+        }
+
+        // --- Game Setup ---
+        function initGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            if (!audio) audio = new AudioCtx();
+
+            engine = Engine.create({ gravity: { x: 0, y: 0 } }); // Zero gravity for space level
+            render = Render.create({
+                element: document.getElementById('game-canvas'),
+                engine: engine,
+                options: { width: W, height: H, wireframes: false, background: 'transparent' }
+            });
+
+            // Space boundaries (bouncy walls)
+            const walls = [
+                Bodies.rectangle(W/2, -50, W, 100, { isStatic: true, restitution: 0.9, label: 'wall' }),
+                Bodies.rectangle(W/2, H + 50, W, 100, { isStatic: true, restitution: 0.9, label: 'wall' }),
+                Bodies.rectangle(-50, H/2, 100, H, { isStatic: true, restitution: 0.9, label: 'wall' }),
+                Bodies.rectangle(W + 50, H/2, 100, H, { isStatic: true, restitution: 0.9, label: 'wall' })
+            ];
+            World.add(engine.world, walls);
+
+            Render.run(render);
+            runner = Runner.create();
+            Runner.run(runner, engine);
+
+            setupControls();
+            loadLevel(1);
+
+            Events.on(engine, 'collisionStart', (e) => {
+                e.pairs.forEach(pair => {
+                    const { bodyA, bodyB } = pair;
+                    if ((bodyA.label === 'bullet' && bodyB.label === 'bubble') || (bodyB.label === 'bullet' && bodyA.label === 'bubble')) {
+                        const bullet = bodyA.label === 'bullet' ? bodyA : bodyB;
+                        const bubble = bodyA.label === 'bubble' ? bodyA : bodyB;
+                        checkHit(bullet, bubble);
+                    }
+                });
+            });
+
+            requestAnimationFrame(updateLoop);
+        }
+
+        function loadLevel(level) {
+            currentTarget = 1;
+            currentLevel = level;
+            totalTargets = 4 + level;
+            updateHUD();
+            
+            // Clear bubbles
+            Composite.allBodies(engine.world).filter(b => b.label === 'bubble').forEach(b => World.remove(engine.world, b));
+
+            // Spawn target bubbles
+            for (let i = 1; i <= totalTargets; i++) {
+                spawnBubble(i);
+            }
+
+            speak(`澔澔任務啟動！巡邏隊注意，順序找出 1 到 ${totalTargets} 號能量星！`);
+        }
+
+        function spawnBubble(num) {
+            const size = Math.max(50, W * 0.08);
+            const x = Math.random() * (W - size*2) + size;
+            const y = Math.random() * (H * 0.6) + size + 50;
+            
+            const b = Bodies.circle(x, y, size/2, {
+                restitution: 1, friction: 0, frictionAir: 0,
+                label: 'bubble',
+                render: {
+                    fillStyle: num === currentTarget ? '#fbbf24' : '#1e3a8a',
+                    strokeStyle: '#60a5fa',
+                    lineWidth: 4,
+                    sprite: { texture: createBubbleTexture(num, size) }
+                }
+            });
+            b.num = num;
+            // Slight initial movement
+            Body.setVelocity(b, { x: (Math.random()-0.5)*2, y: (Math.random()-0.5)*2 });
+            World.add(engine.world, b);
+        }
+
+        function createBubbleTexture(num, size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size * 2; canvas.height = size * 2;
+            const ctx = canvas.getContext('2d');
+            
+            // Outer Glow
+            ctx.shadowBlur = 10; ctx.shadowColor = '#60a5fa';
+            
+            // Main Bubble
+            const grad = ctx.createRadialGradient(size, size, 0, size, size, size);
+            grad.addColorStop(0, 'rgba(30, 64, 175, 0.8)');
+            grad.addColorStop(1, 'rgba(56, 189, 248, 0.4)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(size, size, size*0.8, 0, Math.PI*2); ctx.fill();
+            
+            // Text
+            ctx.font = `black ${size*0.8}px 'Nunito', sans-serif`;
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(num, size, size);
+            
+            return canvas.toDataURL();
+        }
+
+        function setupControls() {
+            const ui = document.getElementById('slingshot-ui');
+            const knob = document.getElementById('drag-knob');
+            const centerX = 60, centerY = 60; // Local within SVG
+
+            ui.addEventListener('mousedown', startDrag);
+            ui.addEventListener('touchstart', startDrag, { passive: false });
+            
+            window.addEventListener('mousemove', drag);
+            window.addEventListener('touchmove', drag, { passive: false });
+            
+            window.addEventListener('mouseup', endDrag);
+            window.addEventListener('touchend', endDrag);
+
+            function startDrag(e) {
+                isDragging = true;
+                const pos = getPos(e);
+                dragStartPos = { x: pos.x, y: pos.y };
+            }
+
+            function drag(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                const pos = getPos(e);
+                const dx = pos.x - dragStartPos.x;
+                const dy = pos.y - dragStartPos.y;
+                const dist = Math.min(60, Math.hypot(dx, dy));
+                const angle = Math.atan2(dy, dx);
+                
+                const ux = Math.cos(angle) * dist;
+                const uy = Math.sin(angle) * dist;
+                
+                knob.setAttribute('cx', 50 + ux/1.2);
+                knob.setAttribute('cy', 50 + uy/1.2);
+            }
+
+            function endDrag() {
+                if (!isDragging) return;
+                isDragging = false;
+                
+                const knobX = parseFloat(knob.getAttribute('cx'));
+                const knobY = parseFloat(knob.getAttribute('cy'));
+                
+                const dx = 50 - knobX;
+                const dy = 50 - knobY;
+                
+                if (Math.hypot(dx, dy) > 10) {
+                    fireBullet(dx * 0.4, dy * 0.4);
+                }
+                
+                gsap.to(knob, { attr: { cx: 50, cy: 50 }, duration: 0.3, ease: "elastic.out(1, 0.3)" });
+            }
+
+            function getPos(e) {
+                const touch = e.touches ? e.touches[0] : e;
+                return { x: touch.clientX, y: touch.clientY };
+            }
+        }
+
+        function fireBullet(vx, vy) {
+            playSfx(800, 'triangle', 0.2);
+            const b = Bodies.circle(W/2, H - 100, 15, {
+                restitution: 0.9, frictionAir: 0,
+                label: 'bullet',
+                render: { fillStyle: '#fbbf24', strokeStyle: '#fff', lineWidth: 2 }
+            });
+            Body.setVelocity(b, { x: vx, y: vy });
+            World.add(engine.world, b);
+            
+            // Remove bullet after 4 seconds
+            setTimeout(() => {
+                if (b.world) World.remove(engine.world, b);
+            }, 4000);
+        }
+
+        function checkHit(bullet, bubble) {
+            if (bubble.num === currentTarget) {
+                // Correct Hit
+                playSfx(1200, 'sine', 0.4);
+                confetti({ particleCount: 40, spread: 60, origin: { x: bubble.position.x/W, y: bubble.position.y/H } });
+                
+                World.remove(engine.world, bubble);
+                World.remove(engine.world, bullet);
+                
+                currentTarget++;
+                updateHUD();
+                
+                if (currentTarget > totalTargets) {
+                    handleLevelComplete();
+                } else {
+                    speak(`${currentTarget - 1} 號收集完成！再來是 ${currentTarget} 號在哪裡呢？`);
+                }
+            } else {
+                // Wrong Hit
+                playSfx(300, 'square', 0.2);
+                // Just bounce back bullet
+                speak(`不對喔！這是 ${bubble.num} 號，我們要找的是 ${currentTarget} 號！`);
+                gsap.fromTo(document.getElementById('target-display'), { color: '#ef4444' }, { color: '#fbbf24', duration: 0.5 });
+            }
+        }
+
+        function handleLevelComplete() {
+            const panel = document.getElementById('success-panel');
+            panel.classList.remove('hidden');
+            speak(`澔澔太聰明了！第 ${currentLevel} 關任務完美達成！🚀`);
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            
+            setTimeout(() => {
+                panel.classList.add('hidden');
+                currentLevel++;
+                if (currentLevel > 5) currentLevel = 1;
+                loadLevel(currentLevel);
+            }, 3000);
+        }
+
+        function updateHUD() {
+            document.getElementById('target-display').innerText = currentTarget;
+            let dots = '';
+            for(let i=0; i<5; i++) {
+                dots += i < currentLevel - 1 ? '⭐' : (i === currentLevel - 1 ? '🌟' : '⚪');
+            }
+            document.getElementById('level-dots').innerText = dots;
+        }
+
+        function updateLoop() {
+            // Logic for pulsing the current target (Scaffolding hint)
+            const bodies = Composite.allBodies(engine.world);
+            bodies.forEach(b => {
+                if (b.label === 'bubble') {
+                    if (b.num === currentTarget) {
+                        // We can't easily add CSS classes to Matter.js bodies, 
+                        // so we manually fluctuate their stroke width or render state
+                        const t = Date.now() / 200;
+                        b.render.lineWidth = 4 + Math.sin(t) * 2;
+                    } else {
+                        b.render.lineWidth = 2;
+                    }
+                }
+            });
+            requestAnimationFrame(updateLoop);
+        }
+
+        // Handle Resizing
+        window.addEventListener('resize', () => { location.reload(); });
+
+    </script>
+</body>
+</html>

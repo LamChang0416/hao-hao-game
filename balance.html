@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>平衡吧！阿布🚀 (星星收集 終極版)</title>
+    <!-- Tailwind CSS (CDN for rapid prototyping as per rules) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Matter.js Physics Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <!-- Confetti & Animations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Noto+Sans+TC:wght@700;900&display=swap');
+        
+        /* === Ultimate iPad / Mobile Optimization === */
+        body, html { 
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif; 
+            touch-action: none; /* Prevent zooming and scrolling */
+            overflow: hidden; /* No scrolling ever */
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            overscroll-behavior: none;
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+        }
+
+        /* Responsive UI Overlay layer (above physics canvas) */
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none; /* Let clicks pass through to canvas if needed */
+            z-index: 10;
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* Beautiful Clouds Background */
+        .clouds-bg {
+            position: absolute;
+            top: 0; left: 0; width: 200%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="white" opacity="0.6"><circle cx="20" cy="30" r="15"/><circle cx="35" cy="30" r="20"/><circle cx="50" cy="35" r="12"/><circle cx="80" cy="20" r="18"/><circle cx="95" cy="25" r="15"/></svg>') repeat-x;
+            background-size: 50vw auto;
+            animation: driftClouds 30s linear infinite;
+        }
+        @keyframes driftClouds { from { transform: translateX(0); } to { transform: translateX(-50vw); } }
+
+        /* The physics canvas */
+        #matter-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 2; /* Between clouds and UI */
+        }
+
+        /* Huge Play Button for tiny fingers */
+        .huge-btn {
+            background: linear-gradient(to bottom, #fde047, #eab308);
+            box-shadow: 0 12px 0 0 #a16207, 0 20px 25px rgba(0,0,0,0.5);
+            transition: all 0.1s;
+            pointer-events: auto; /* Re-enable pointer events for buttons */
+        }
+        .huge-btn:active {
+            transform: translateY(12px);
+            box-shadow: 0 0px 0 0 #a16207, 0 5px 10px rgba(0,0,0,0.5);
+        }
+
+        /* Chat Bubble */
+        .chat-bubble {
+            position: absolute;
+            background: #ffffff;
+            color: #1e293b;
+            border-radius: 20px;
+            padding: 12px 24px;
+            font-weight: 800;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            border: 3px solid #fcd34d;
+            text-shadow: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            transform: translate(-50%, -120%);
+            white-space: nowrap;
+        }
+        .chat-bubble::after {
+            content: ''; position: absolute; bottom: -10px; left: 50%;
+            margin-left: -10px;
+            border-width: 10px 10px 0; border-style: solid; border-color: #ffffff transparent;
+        }
+
+        /* Soft Fail Screen / Balloon Rescue Animation */
+        #soft-fail-overlay {
+            position: absolute; inset: 0;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(8px);
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        #soft-fail-overlay.active {
+            opacity: 1; pointer-events: auto;
+        }
+
+        .balloon-rescue {
+            width: 150px; height: 200px;
+            animation: floatUp 3s ease-in-out forwards;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) rotate(-5deg); }
+            50% { transform: translateY(0) rotate(5deg); }
+            100% { transform: translateY(-20px) rotate(0deg); }
+        }
+
+        /* Desktop specific hint (since no gyro) */
+        @media (pointer: fine) {
+            #desktop-hint { display: block; }
+        }
+        @media (pointer: coarse) {
+            #desktop-hint { display: none; }
+        }
+
+    </style>
+</head>
+<body>
+    
+    <div class="clouds-bg"></div>
+
+    <!-- Matter.js will inject canvas here -->
+    <div id="matter-container"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer" class="flex flex-col p-4 sm:p-8 safe-area-inset-top safe-area-inset-bottom">
+        
+        <!-- Header: Score & Dialog -->
+        <div class="flex justify-between items-start w-full">
+            <div class="glass-panel rounded-2xl p-4 flex flex-col items-center min-w-[120px]">
+                <span class="text-sm font-black uppercase tracking-wider opacity-90">星星分數</span>
+                <span id="score-display" class="text-5xl font-black text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">0</span>
+            </div>
+            
+            <!-- Mouse/Touch Drag Area for Desktop Testing -->
+            <div id="drag-area" class="flex-grow h-24 mx-4 border-2 border-dashed border-white/30 rounded-xl flex items-center justify-center pointer-events-auto">
+                <span id="desktop-hint" class="text-white/70 font-bold text-center">電腦版測試：<br>按住並左右滑動來傾斜木板</span>
+                <span class="text-white/70 font-bold text-center block sm:hidden relative z-50">滑動此區可測試</span>
+            </div>
+            
+            <div class="glass-panel rounded-full p-3 sm:p-4 cursor-pointer pointer-events-auto active:scale-95 transition" onclick="togglePause()">
+                <span class="text-3xl">⏸️</span>
+            </div>
+        </div>
+
+        <!-- Dynamic Chat Bubble anchored to A-bu logically, not physically in DOM -->
+        <div id="abu-bubble" class="chat-bubble text-xl sm:text-2xl z-50 pointer-events-none">
+            哇！星星掉下來了！
+        </div>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-black/40 backdrop-blur-md pointer-events-auto">
+            <h1 class="text-6xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-orange-500 mb-4 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] text-center leading-tight">
+                平衡吧！阿布<br><span class="text-3xl sm:text-5xl text-white">⭐ 星星收集大挑戰 ⭐</span>
+            </h1>
+            
+            <div class="w-40 h-40 mb-10 relative animate-bounce flex justify-center items-center">
+                <!-- Static SVG purely for intro aesthetic -->
+                <svg viewBox="0 0 100 100" class="w-full h-full filter drop-shadow-[0_15px_15px_rgba(0,0,0,0.6)]">
+                    <circle cx="50" cy="50" r="45" fill="#2d3748" />
+                    <!-- Eyes -->
+                    <circle cx="35" cy="35" r="8" fill="white" /><circle cx="35" cy="35" r="4" fill="black" />
+                    <circle cx="65" cy="35" r="8" fill="white" /><circle cx="65" cy="35" r="4" fill="black" />
+                    <polygon points="45,45 55,45 50,60" fill="#fbbf24" stroke="#d97706" stroke-width="2"/>
+                    <!-- Star -->
+                    <polygon points="20,10 25,25 40,25 28,35 32,50 20,40 8,50 12,35 0,25 15,25" fill="#fef08a" transform="rotate(15 20 25) scale(0.6)" />
+                </svg>
+            </div>
+
+            <button onclick="startGame()" class="huge-btn text-yellow-900 text-3xl sm:text-5xl font-black py-6 px-16 rounded-full">
+                🚀 開始挑戰！
+            </button>
+            <p class="mt-6 text-white text-lg font-bold">左右傾斜平板，讓阿布滾過去接星星！</p>
+        </div>
+
+        <!-- Pause Screen -->
+        <div id="pause-screen" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto">
+            <h2 class="text-6xl font-black text-white mb-10">遊戲暫停</h2>
+            <button onclick="togglePause()" class="huge-btn text-yellow-900 text-4xl font-black py-4 px-12 rounded-full mb-6">
+                繼續繼續！
+            </button>
+            <button onclick="location.reload()" class="glass-panel text-white text-2xl font-black py-4 px-12 rounded-full border-4 border-white active:scale-95 transition">
+                重新開始
+            </button>
+        </div>
+
+        <!-- Soft Fail "Rescue" Overlay -->
+        <div id="soft-fail-overlay">
+            <div id="rescue-anim-container" class="balloon-rescue flex flex-col items-center">
+                <!-- Balloon -->
+                <div class="w-24 h-32 bg-red-500 rounded-t-full rounded-b-xl relative mb-2 shadow-[inset_-10px_0_20px_rgba(0,0,0,0.3)] border-b-4 border-yellow-400"></div>
+                <!-- String -->
+                <div class="w-[2px] h-10 bg-gray-400"></div>
+                <!-- Basket implicitly holds Abu below -->
+            </div>
+            <h2 class="text-4xl font-black text-sky-900 mt-10 drop-shadow-md px-4 text-center">
+                哇！阿布起飛啦！
+            </h2>
+            <p class="text-xl font-bold text-sky-800 mt-2 bg-white/50 px-4 py-2 rounded-full">熱氣球救援中...</p>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Synthesis Audio Setup ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSynth(type) {
+            if(!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            
+            if (type === 'star') {
+                // Happy chime, scales up with score
+                let baseFreq = 600 + Math.min(score * 20, 400); // Caps at 1000Hz base
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(baseFreq, now);
+                osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.1);
+                
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(0.3, now + 0.05);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'bounce') {
+                // Soft wood thud
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(0.4, now + 0.02);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'fail') {
+                // Funny boing fall
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.5);
+                
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(0.2, now + 0.1);
+                gainNode.gain.linearRampToValueAtTime(0.01, now + 0.5);
+                
+                osc.start(now);
+                osc.stop(now + 0.6);
+            }
+        }
+
+        // --- Speech ---
+        let voiceSynthesizer = window.speechSynthesis;
+        function speak(text) {
+            voiceSynthesizer.cancel(); 
+            let msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'zh-TW';
+            msg.rate = 1.35; // Fast, excited voice
+            msg.pitch = 1.2;
+            voiceSynthesizer.speak(msg);
+        }
+
+        function showBubble(text, duration = 2000) {
+            const bubble = document.getElementById('abu-bubble');
+            bubble.innerText = text;
+            bubble.style.opacity = '1';
+            setTimeout(() => { bubble.style.opacity = '0'; }, duration);
+        }
+
+        // --- Game Logic variables ---
+        let score = 0;
+        let isPlaying = false;
+        let isPaused = false;
+        let isRescuing = false; // Soft fail state
+        
+        let targetTilt = 0; // Device angle
+        let currentTilt = 0; // Smoothed angle
+        const maxTilt = Math.PI / 4; // 45 degrees max
+        
+        // --- Matter.js Aliases & Setup ---
+        const Engine = Matter.Engine,
+              Render = Matter.Render,
+              Runner = Matter.Runner,
+              Bodies = Matter.Bodies,
+              Composite = Matter.Composite,
+              Events = Matter.Events,
+              Vector = Matter.Vector;
+
+        const engine = Engine.create();
+        const world = engine.world;
+        
+        // Optimize for smooth falling/rolling
+        engine.gravity.y = 1; // Standard gravity
+        engine.positionIterations = 8;
+        engine.velocityIterations = 8;
+        
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+
+        // Custom renderer wrapper
+        const render = Render.create({
+            element: document.getElementById('matter-container'),
+            engine: engine,
+            options: {
+                width: width,
+                height: height,
+                background: 'transparent', // Let CSS gradient behind
+                wireframes: false,
+                pixelRatio: window.devicePixelRatio
+            }
+        });
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            render.canvas.width = width;
+            render.canvas.height = height;
+            // Update plank position
+            if (plank) {
+                Matter.Body.setPosition(plank, { x: width / 2, y: height * 0.75 });
+            }
+        });
+
+        // --- Game Objects ---
+        let abuBody;
+        let plank;
+        let stars = [];
+        
+        // SVG Data URIs for textures
+        // Custom rendering for A-Bu: We draw him directly into a canvas to use as texture
+        function createAbuTexture(expression) {
+            const size = 100;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            let eyesData = '';
+            if (expression === 'happy') {
+                eyesData = `<path d="M 30 35 Q 35 25 40 35 M 60 35 Q 65 25 70 35" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+            } else if (expression === 'dizzy') {
+                eyesData = `<path d="M 30 35 L 40 35 M 35 30 L 35 40 M 60 35 L 70 35 M 65 30 L 65 40" stroke="white" stroke-width="3" fill="none"/>`;
+            } else if (expression === 'panic') {
+                 eyesData = `<circle cx="35" cy="35" r="9" fill="white" /><circle cx="35" cy="35" r="2" fill="black" />
+                             <circle cx="65" cy="35" r="9" fill="white" /><circle cx="65" cy="35" r="2" fill="black" />`;
+            } else {
+                // Normal
+                eyesData = `<circle cx="35" cy="35" r="8" fill="white" /><circle cx="36" cy="35" r="4" fill="black" />
+                            <circle cx="65" cy="35" r="8" fill="white" /><circle cx="66" cy="35" r="4" fill="black" />`;
+            }
+
+            const svgStr = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="#2d3748" />
+                <circle cx="50" cy="60" r="30" fill="#4a5568" />
+                ${eyesData}
+                <path d="M 45 42 L 55 42 L 50 55 Z" fill="#fbbf24" stroke="#d97706" stroke-width="2"/>
+            </svg>`;
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+        }
+
+        const starTexture = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+            <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100">
+                <polygon points="50,5 65,35 100,40 75,65 80,100 50,85 20,100 25,65 0,40 35,35" fill="#fef08a" stroke="#ca8a04" stroke-width="4"/>
+            </svg>
+        `);
+
+        // Update A-bu's texture based on state
+        function updateAbuVisual(expression) {
+            if(!abuBody) return;
+            abuBody.render.sprite.texture = createAbuTexture(expression);
+        }
+
+        // --- Init & Start ---
+        function createPhysicsWorld() {
+            // Clear existing
+            Composite.clear(world);
+            
+            // Plank (Kinematic body - controlled by gyro, not gravity)
+            // Initial size: 80% screen width, capped at 600px
+            let plankWidth = Math.min(width * 0.8, 600);
+            plank = Bodies.rectangle(width / 2, height * 0.75, plankWidth, 30, { 
+                isStatic: true,
+                friction: 0.8, // Good grip so he rolls instead of slides instantly
+                restitution: 0.4, // Slight bounce
+                render: {
+                    fillStyle: '#854d0e',
+                    strokeStyle: '#ca8a04',
+                    lineWidth: 4
+                },
+                label: 'plank'
+            });
+
+            // A-Bu (The rolling bird)
+            abuBody = Bodies.circle(width / 2, height * 0.5, 40, {
+                restitution: 0.6, // Bouncy!
+                friction: 0.05, // Smooth rolling
+                density: 0.04, // Feels solid
+                render: {
+                    sprite: { texture: createAbuTexture('normal'), xScale: 0.8, yScale: 0.8 }
+                },
+                label: 'abu'
+            });
+
+            Composite.add(world, [plank, abuBody]);
+        }
+
+        function startGame() {
+            initAudio();
+            speak(''); // Unlock audio
+            
+            document.getElementById('start-screen').style.display = 'none';
+            score = 0;
+            updateScoreDisplay();
+            
+            createPhysicsWorld();
+            
+            Render.run(render);
+            Runner.run(Runner.create(), engine);
+            
+            isPlaying = true;
+            targetTilt = 0;
+            currentTilt = 0;
+
+            // Setup Orientation Listeners
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                        } else alert('系統需要感應器權限才能玩喔！');
+                    }).catch(console.error);
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
+            }
+
+            // Fallback Mouse/Touch for Desktop testing
+            setupDesktopControls();
+
+            speak("出發！左右搖晃平板接掉下來的星星");
+            showBubble("木頭好滑呀～", 2500);
+
+            // Start Star Spawner
+            scheduleNextStar();
+            
+            // Start Physics Event Listeners
+            setupCollisionEvents();
+            
+            // Update Loop (Frame by Frame tracking)
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Desktop Fallback
+        function setupDesktopControls() {
+            const dragArea = document.getElementById('drag-area');
+            let isDragging = false;
+            let startX = 0;
+
+            function handleMove(clientX) {
+                if(!isDragging || !isPlaying || isPaused || isRescuing) return;
+                const rect = dragArea.getBoundingClientRect();
+                const center = rect.left + rect.width / 2;
+                // Offset from center -> Angle
+                const diff = (clientX - center) / (rect.width / 2); // -1 to +1
+                targetTilt = diff * (maxTilt * 0.8); // Scale to somewhat reasonable angle
+            }
+
+            dragArea.addEventListener('mousedown', e => { isDragging = true; handleMove(e.clientX); });
+            dragArea.addEventListener('mousemove', e => handleMove(e.clientX));
+            window.addEventListener('mouseup', () => { isDragging = false; targetTilt = 0; });
+            
+            dragArea.addEventListener('touchstart', e => { isDragging = true; handleMove(e.touches[0].clientX); }, {passive: false});
+            dragArea.addEventListener('touchmove', e => { 
+                e.preventDefault(); // Stop scrolling while dragging here
+                handleMove(e.touches[0].clientX); 
+            }, {passive: false});
+            window.addEventListener('touchend', () => { isDragging = false; targetTilt = 0; });
+        }
+
+        function handleOrientation(event) {
+            if (!isPlaying || isPaused || isRescuing) return;
+            
+            let tilt = 0;
+            // iPad orientation logic
+            if (window.orientation === 90) { tilt = event.beta; } 
+            else if (window.orientation === -90) { tilt = -event.beta; } 
+            else { tilt = event.gamma; }
+
+            // Math.max/min clamping to roughly +-45 degrees
+            if (tilt > 45) tilt = 45;
+            if (tilt < -45) tilt = -45;
+
+            // Convert to radians for Matter.js
+            targetTilt = tilt * (Math.PI / 180);
+        }
+
+        // --- Core Loop : Physics & Polish ---
+        function gameLoop() {
+            if (!isPlaying || isPaused) return requestAnimationFrame(gameLoop); // Keep loop alive but idle
+
+            if (!isRescuing) {
+                // Smooth the plank rotation
+                currentTilt = currentTilt * 0.85 + targetTilt * 0.15;
+                if(plank) Matter.Body.setAngle(plank, currentTilt);
+                
+                // Track A-Bu for Chat Bubble positioning
+                updateChatBubblePosition();
+                
+                // Track expressions based on angular velocity
+                const speed = Math.abs(abuBody.angularVelocity);
+                if (speed > 0.4) {
+                    updateAbuVisual('dizzy');
+                } else if (Math.abs(abuBody.position.x - plank.position.x) > plank.bounds.max.x - plank.bounds.min.x - 80) {
+                    // Near edges
+                    updateAbuVisual('panic');
+                } else {
+                    updateAbuVisual('normal');
+                }
+
+                // Check falling Condition (Soft fail)
+                if (abuBody.position.y > height + 80) {
+                    triggerSoftFail();
+                }
+
+                // Cleanup missed stars
+                for (let i = stars.length - 1; i >= 0; i--) {
+                    let s = stars[i];
+                    if (s.position.y > height + 50) {
+                        Composite.remove(world, s);
+                        stars.splice(i, 1);
+                    }
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateChatBubblePosition() {
+             const bubble = document.getElementById('abu-bubble');
+             // Position CSS absolute div matching Matter.js body coordinates
+             if(abuBody && bubble.style.opacity > 0) {
+                 bubble.style.left = abuBody.position.x + 'px';
+                 bubble.style.top = (abuBody.position.y - 60) + 'px';
+             }
+        }
+
+        // --- Collisions ---
+        function setupCollisionEvents() {
+            Events.on(engine, 'collisionStart', function(event) {
+                const pairs = event.pairs;
+                for (let i = 0; i < pairs.length; i++) {
+                    const bodyA = pairs[i].bodyA;
+                    const bodyB = pairs[i].bodyB;
+
+                    // Abu hits Plank -> play sound based on speed
+                    if ((bodyA.label === 'abu' && bodyB.label === 'plank') || (bodyB.label === 'abu' && bodyA.label === 'plank')) {
+                        const relativeSpeed = Math.abs(abuBody.velocity.y);
+                        if(relativeSpeed > 2 && !isRescuing) playSynth('bounce');
+                    }
+
+                    // Abu catches Star
+                    if (bodyA.label === 'abu' && bodyB.label === 'star') {
+                        handleStarCatch(bodyB);
+                    } else if (bodyB.label === 'abu' && bodyA.label === 'star') {
+                        handleStarCatch(bodyA);
+                    }
+                }
+            });
+        }
+
+        function handleStarCatch(starBody) {
+             // Remove star
+             Composite.remove(world, starBody);
+             const index = stars.indexOf(starBody);
+             if (index > -1) stars.splice(index, 1);
+
+             // Points & Audio
+             score += 1;
+             updateScoreDisplay();
+             playSynth('star');
+             
+             // Emotions & Confetti at star's location
+             updateAbuVisual('happy');
+             showBubble("太棒啦！", 1500);
+             triggerConfetti(starBody.position.x, starBody.position.y);
+
+             // DDA - Adjust Plank length based on score
+             // Shrink slightly but stop at 300px
+             if (score % 3 === 0 && score <= 30) {
+                 const currentWidth = plank.bounds.max.x - plank.bounds.min.x;
+                 if (currentWidth > 320) {
+                     // Need to recreate body to change shape reliably in Matter
+                     const oldAngle = plank.angle;
+                     Composite.remove(world, plank);
+                     plank = Bodies.rectangle(width / 2, height * 0.75, currentWidth - 40, 30, { 
+                         isStatic: true, friction: 0.8, restitution: 0.4,
+                         render: { fillStyle: '#854d0e', strokeStyle: '#ca8a04', lineWidth: 4 }, label: 'plank'
+                     });
+                     Matter.Body.setAngle(plank, oldAngle);
+                     Composite.add(world, plank);
+                     speak("變難囉！", 1.2, 1.4);
+                 }
+             }
+
+             if (score === 20) {
+                 speak("狂熱星星派對！");
+                 triggerFever();
+             }
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('score-display').innerText = score;
+        }
+
+        // --- Spawners ---
+        function scheduleNextStar() {
+            if(!isPlaying) return;
+            
+            if(!isPaused && !isRescuing) {
+                spawnStar();
+            }
+            // Spawn rate gets slightly faster as score goes up
+            let delay = 3500 - (score * 50);
+            if (delay < 1000) delay = 1000;
+            
+            // Random noise to delay
+            setTimeout(scheduleNextStar, delay + Math.random()*1000);
+        }
+
+        function spawnStar() {
+            // Spawn somewhere safe near the middle width of screen
+            const padding = width * 0.2;
+            const spawnX = padding + Math.random() * (width - 2*padding);
+            
+            const star = Bodies.polygon(spawnX, -50, 5, 25, {
+                restitution: 0.8,
+                friction: 0.1,
+                density: 0.001,
+                render: {
+                    sprite: { texture: starTexture, xScale: 0.8, yScale: 0.8 }
+                },
+                label: 'star'
+            });
+            // Initial spin
+            Matter.Body.setAngularVelocity(star, (Math.random() - 0.5) * 0.2);
+            stars.push(star);
+            Composite.add(world, star);
+        }
+
+        // --- Soft Fail ---
+        function triggerSoftFail() {
+            if(isRescuing) return;
+            isRescuing = true;
+            playSynth('fail');
+            
+            // UI Overlay
+            const overlay = document.getElementById('soft-fail-overlay');
+            overlay.classList.add('active');
+            
+            let dialogs = ["哎呀，我又飛起來啦！", "阿布熱氣球來救援囉！", "好驚險！沒事沒事！"];
+            let phrase = dialogs[Math.floor(Math.random()*dialogs.length)];
+            speak(phrase);
+
+            // Recreate Abu locally inside the balloon div visually? 
+            // We just let css animation do the work.
+
+            setTimeout(() => {
+                // Drop Abu back on plank
+                Matter.Body.setPosition(abuBody, { x: width/2, y: height/2 });
+                Matter.Body.setVelocity(abuBody, { x: 0, y: 0 });
+                Matter.Body.setAngularVelocity(abuBody, 0);
+                
+                // Reset tilt targeting
+                targetTilt = 0; currentTilt = 0;
+                Matter.Body.setAngle(plank, 0);
+
+                // DDA - Make it easier if falling (lengthen plank)
+                const currentWidth = plank.bounds.max.x - plank.bounds.min.x;
+                if (currentWidth < width * 0.8) {
+                     Composite.remove(world, plank);
+                     plank = Bodies.rectangle(width / 2, height * 0.75, currentWidth + 60, 30, { 
+                         isStatic: true, friction: 0.8, restitution: 0.4,
+                         render: { fillStyle: '#854d0e', strokeStyle: '#ca8a04', lineWidth: 4 }, label: 'plank'
+                     });
+                     Composite.add(world, plank);
+                }
+
+                overlay.classList.remove('active');
+                updateAbuVisual('normal');
+                showBubble("繼續接星星！", 2000);
+                speak("我回來啦！繼續！");
+                isRescuing = false;
+
+            }, 3000); // 3 seconds penalty/rescue animation duration
+        }
+
+        // --- Special FX ---
+        function triggerConfetti(xLoc, yLoc) {
+            const x = xLoc / width;
+            const y = yLoc / height;
+            confetti({
+                particleCount: 20,
+                startVelocity: 15,
+                spread: 360,
+                origin: { x: x, y: y },
+                shapes: ['star', 'circle'],
+                colors: ['#fde047', '#ff69b4', '#38bdf8'],
+                disableForReducedMotion: true,
+                zIndex: 100
+            });
+        }
+
+        function triggerFever() {
+             var end = Date.now() + 3000;
+             (function frame() {
+                 confetti({
+                     particleCount: 5, angle: 60, spread: 55, origin: { x: 0 },
+                     colors: ['#fde047', '#38bdf8', '#3b82f6']
+                 });
+                 confetti({
+                     particleCount: 5, angle: 120, spread: 55, origin: { x: 1 },
+                     colors: ['#fde047', '#ef4444', '#f97316']
+                 });
+                 if (Date.now() < end) requestAnimationFrame(frame);
+             }());
+        }
+
+        // --- UI ---
+        function togglePause() {
+            if(!isPlaying) return;
+            isPaused = !isPaused;
+            const pauseScreen = document.getElementById('pause-screen');
+            if(isPaused) {
+                // Let physics engine pause by preventing updates in the wrapper natively?
+                // Actually Matter.js engine runner can be frozen but easy way is disable Runner:
+                engine.enabled = false;
+                pauseScreen.classList.remove('hidden');
+                speak("休息一下喝口水！", 1.0);
+            } else {
+                engine.enabled = true;
+                pauseScreen.classList.add('hidden');
+                speak("回來囉！", 1.2);
+            }
+        }
+        
+    </script>
+</body>
+</html>

@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>澔澔的星際數字探險🚀 (終極版)</title>
+    <!-- Tailwind CSS (CDN for rapid prototyping as per rules) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Confetti & Animations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Noto+Sans+TC:wght@700;900&display=swap');
+        
+        /* === Ultimate iPad / Mobile Optimization === */
+        body { 
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif; 
+            touch-action: manipulation; /* Prevent zooming but allow smooth tap */
+            overflow: hidden; /* No scrolling ever */
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%); /* Space theme */
+            color: white;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            overscroll-behavior: none;
+        }
+
+        /* Animated Stars Background */
+        .stars {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            animation: moveStars 100s linear infinite;
+        }
+        @keyframes moveStars { from { transform: translateY(0); } to { transform: translateY(-200px); } }
+
+        /* === Glassmorphism & Soft UI for Game Elements === */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* === The Ultimate Number Cards (Fat Finger & Animations) === */
+        .num-card { 
+            position: relative;
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            color: #1e293b;
+            border-radius: 20px;
+            box-shadow: 
+                0 10px 0 0 #cbd5e1, /* 3D pop effect */
+                0 15px 15px rgba(0,0,0,0.3);
+            text-shadow: 1px 1px 0px rgba(255,255,255,0.7);
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); /* Springy response */
+            transform-origin: center bottom;
+        }
+        /* Touch / Hover interactive */
+        @media (hover: hover) {
+            .num-card:hover { transform: translateY(-5px) scale(1.05); box-shadow: 0 15px 0 0 #cbd5e1, 0 20px 20px rgba(0,0,0,0.4); }
+        }
+        .num-card:active { 
+            transform: scale(0.92) translateY(8px) !important; 
+            box-shadow: 0 2px 0 0 #cbd5e1, 0 5px 5px rgba(0,0,0,0.2) !important; 
+        }
+        
+        /* States */
+        .correct-card { 
+            background: linear-gradient(145deg, #10b981, #059669) !important; 
+            color: white !important; 
+            box-shadow: 0 4px 0 0 #047857, inset 0 2px 5px rgba(0,0,0,0.2) !important;
+            transform: scale(0.9) translateY(6px); 
+            opacity: 0.6; 
+            pointer-events: none; 
+            animation: popCheck 0.4s ease-out;
+        }
+        @keyframes popCheck { 0% { transform: scale(1.2); } 100% { transform: scale(0.9); } }
+        
+        /* Scaffolding Glow Hint */
+        .hint-glow { 
+            animation: softPulse 2s infinite !important; 
+            border: 4px solid #fcd34d !important; 
+        }
+        @keyframes softPulse { 
+            0% { box-shadow: 0 10px 0 0 #cbd5e1, 0 0 10px 2px rgba(252, 211, 77, 0); } 
+            50% { box-shadow: 0 10px 0 0 #cbd5e1, 0 0 25px 8px rgba(252, 211, 77, 0.8); transform: scale(1.02); } 
+            100% { box-shadow: 0 10px 0 0 #cbd5e1, 0 0 10px 2px rgba(252, 211, 77, 0); } 
+        }
+
+        /* === Character A-Bu Animations === */
+        #abu-svg { transition: all 0.3s ease; }
+        .abu-float { animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .abu-cheer { animation: cheerBounce 0.6s cubic-bezier(0.28, 0.84, 0.42, 1) infinite; }
+        @keyframes cheerBounce { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-25px) scale(1.1); } }
+        
+
+        /* Chat Bubble */
+        .chat-bubble {
+            position: relative;
+            background: #ffffff;
+            color: #1e293b;
+            border-radius: 20px;
+            padding: 12px 24px;
+            font-weight: 800;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            border: 3px solid #fcd34d;
+        }
+        .chat-bubble::after {
+            content: ''; position: absolute; bottom: -10px; left: 24px;
+            border-width: 10px 10px 0; border-style: solid; border-color: #ffffff transparent;
+        }
+
+        /* Fever Mode UI FX */
+        body.fever-mode {
+            animation: feverBg 2s infinite alternate;
+        }
+        @keyframes feverBg {
+            0% { background: linear-gradient(135deg, #4c1d95, #9d174d, #be123c); }
+            100% { background: linear-gradient(135deg, #3b0764, #701a75, #9f1239); }
+        }
+        
+        .huge-btn {
+            background: linear-gradient(to bottom, #fde047, #eab308);
+            box-shadow: 0 12px 0 0 #a16207, 0 20px 25px rgba(0,0,0,0.5);
+            transition: all 0.1s;
+        }
+        .huge-btn:active {
+            transform: translateY(12px);
+            box-shadow: 0 0px 0 0 #a16207, 0 5px 10px rgba(0,0,0,0.5);
+        }
+
+    </style>
+</head>
+<body class="w-full h-full flex flex-col safe-area-inset-bottom safe-area-inset-top">
+    <div class="stars"></div>
+
+    <!-- Start Screen (Requires Tap for Audio) -->
+    <div id="start-screen" class="fixed inset-0 flex flex-col items-center justify-center z-50 glass-panel backdrop-blur-xl">
+        <h1 class="text-5xl sm:text-6xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500 drop-shadow-lg text-center leading-tight">
+            星際數字探險<br>🌟 澔澔專屬 🌟
+        </h1>
+        
+        <div class="mb-12 relative">
+            <svg width="150" height="150" viewBox="0 0 100 100" class="abu-float filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
+                <!-- A-Bu Space Helmet -->
+                <circle cx="50" cy="45" r="48" fill="rgba(255,255,255,0.3)" stroke="#fff" stroke-width="2"/>
+                <!-- A-Bu Body -->
+                <circle cx="50" cy="50" r="40" fill="#2d3748" />
+                <circle cx="50" cy="40" r="25" fill="#4a5568" />
+                <!-- Eyes -->
+                <circle cx="40" cy="35" r="6" fill="white" /> <circle cx="40" cy="35" r="3" fill="#1a202c" class="animate-pulse"/>
+                <circle cx="60" cy="35" r="6" fill="white" /> <circle cx="60" cy="35" r="3" fill="#1a202c" class="animate-pulse"/>
+                <!-- Beak -->
+                <polygon points="45,45 55,45 50,60" fill="#fbbf24" stroke="#d97706" stroke-width="1"/>
+            </svg>
+        </div>
+
+        <button onclick="startGame()" class="huge-btn text-yellow-900 text-4xl sm:text-5xl font-black py-6 px-16 rounded-full">
+            🚀 點擊出發！
+        </button>
+    </div>
+
+    <!-- Main Game UI -->
+    <div id="game-ui" class="hidden flex-grow flex flex-col items-center w-full px-2 py-4">
+        
+        <!-- Header: A-bu & Dialog -->
+        <div class="w-full max-w-2xl px-2 flex items-end gap-3 mb-4">
+            <div id="abu-container" class="relative z-10 shrink-0">
+                <svg id="abu-svg" width="90" height="90" viewBox="0 0 100 100" class="abu-float cursor-pointer filter drop-shadow-md" onclick="pokeAbu()">
+                    <circle cx="50" cy="50" r="45" fill="#2d3748" />
+                    <!-- Belly -->
+                    <circle cx="50" cy="65" r="30" fill="#4a5568" />
+                    <!-- Eyes -->
+                    <circle cx="38" cy="35" r="7" fill="white" /> <circle id="eye-l" cx="38" cy="35" r="3" fill="black" />
+                    <circle cx="62" cy="35" r="7" fill="white" /> <circle id="eye-r" cx="62" cy="35" r="3" fill="black" />
+                    <!-- Beak -->
+                    <path d="M 45 42 L 55 42 L 50 55 Z" fill="#fbbf24" />
+                    <!-- Cape (Hidden by default, shown in Fever) -->
+                    <path id="abu-cape" class="hidden" d="M 15 50 C 0 80 20 100 50 100 C 80 100 100 80 85 50 Z" fill="#ef4444" opacity="0.8" style="z-index:-1" />
+                </svg>
+                <!-- Fever Mode Crown -->
+                <div id="fever-crown" class="hidden absolute -top-4 left-1/2 -translate-x-1/2 text-4xl animate-bounce">👑</div>
+            </div>
+            
+            <div class="flex-grow pb-4">
+                <div id="dialog-box" class="chat-bubble text-xl sm:text-2xl w-full">
+                    澔澔，找出數字 <span id="target-display" class="text-3xl text-red-500 font-black px-1">1</span> 吧！
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="w-full max-w-2xl px-3 mb-6">
+            <div class="glass-panel w-full rounded-full h-6 p-1 relative flex items-center">
+                <div id="progress-fill" class="bg-gradient-to-r from-green-400 to-emerald-500 h-full rounded-full shadow-inner transition-all duration-300 ease-out" style="width: 0%"></div>
+                <div class="absolute inset-0 flex justify-center items-center text-xs font-bold text-white shadow-sm mix-blend-difference">
+                    <span id="progress-text">0</span> / 100
+                </div>
+            </div>
+        </div>
+
+        <!-- The Game Board Matrix -->
+        <div class="flex-grow w-full max-w-3xl flex justify-center items-center px-1 pb-4">
+            <!-- Grid automatically adjusts for fat fingers. 2 cols on mobile, 5 on iPad -->
+            <div id="board" class="w-full grid grid-cols-2 md:grid-cols-5 gap-4 sm:gap-6 preserve-3d">
+                <!-- Generated by JS -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Ultimate Celebration Screen -->
+    <div id="victory-screen" class="hidden fixed inset-0 z-50 glass-panel backdrop-blur-3xl flex flex-col items-center justify-center text-center px-4">
+        <h2 id="victory-title" class="text-5xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-500 mb-8 animate-pulse drop-shadow-2xl">
+            太狂啦！
+        </h2>
+        
+        <div class="relative w-64 h-64 mb-12">
+             <svg id="victory-abu" viewBox="0 0 100 100" class="w-full h-full abu-cheer filter drop-shadow-[0_20px_20px_rgba(0,0,0,0.5)]">
+                 <!-- Big Cape -->
+                 <path d="M 10 40 L 0 100 L 100 100 L 90 40 Z" fill="#ef4444" />
+                 <!-- Body -->
+                 <circle cx="50" cy="50" r="45" fill="#2d3748" />
+                 <circle cx="50" cy="60" r="30" fill="#4a5568" />
+                 <!-- Star Eyes -->
+                 <polygon points="35,27 38,33 44,34 39,39 41,45 35,42 29,45 31,39 26,34 32,33" fill="#fde047" />
+                 <polygon points="65,27 68,33 74,34 69,39 71,45 65,42 59,45 61,39 56,34 62,33" fill="#fde047" />
+                 <!-- Open Happy Beak -->
+                 <path d="M 40 45 Q 50 60 60 45 Q 50 55 40 45 Z" fill="#ef4444" />
+             </svg>
+        </div>
+
+        <button onclick="generateNextBatch()" id="next-batch-btn" class="huge-btn text-yellow-900 text-3xl font-black py-5 px-12 rounded-full">
+            繼續挑戰！🔥
+        </button>
+    </div>
+
+    <!-- Audio Synth Logic -->
+    <script>
+        // Audio Context for synthesized dynamic feedback
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Play an ascending positive synth blip
+        function playSuccessSound(streak) {
+            if(!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            // Base frequency increases with streak (fever buildup)
+            let baseFreq = 440 + (streak * 20);
+            if(baseFreq > 880) baseFreq = 880;
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, audioCtx.currentTime + 0.1);
+            
+            // Fast attack, smooth release
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + 0.3);
+        }
+    </script>
+
+    <!-- Game Logic -->
+    <script>
+        let currentTarget = 1;
+        let batchStart = 1;
+        let comboCount = 0; // Number of correct taps without taking too long
+        let hintTimer;
+        let boardStartTime;
+        let levelDifficulty = 0; // 0 = easy (grid), 1 = rotated
+        
+        let voiceSynthesizer = window.speechSynthesis;
+        let preferredVoice = null;
+
+        // Load voices ensuring we grab a good Chinese voice
+        function setupVoices() {
+            let voices = voiceSynthesizer.getVoices();
+            preferredVoice = voices.find(v => v.lang.includes('zh-TW') || v.lang.includes('zh-CN')) || voices[0];
+        }
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = setupVoices;
+        }
+
+        function speak(text, pitch = 1.2, rate = 1.25) {
+            voiceSynthesizer.cancel(); 
+            let msg = new SpeechSynthesisUtterance(text);
+            if(preferredVoice) msg.voice = preferredVoice;
+            msg.lang = 'zh-TW';
+            msg.rate = rate; // Energetic pace per rules
+            msg.pitch = pitch; // Higher pitch for A-bu
+            voiceSynthesizer.speak(msg);
+        }
+
+        // Interaction arrays
+        const goodJobMsgs = ["太快了！", "完美命中！", "天才澔澔！", "就是那個！", "超帥！"];
+        const scaffoldMsgs = ["阿布看到他了...", "是不是在那邊閃閃發光？", "仔細找找...", "加油，差一點！"];
+        const pokeMsgs = ["哈哈好癢！", "專心找數字啦～", "我是阿布隊長！", "飛向宇宙！"];
+
+        function startGame() {
+            initAudio(); // Unlock Web Audio
+            speak(''); // Unlock Web Speech on iOS
+            
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+            
+            setTimeout(() => {
+                speak(`星際任務開始！找出 1`);
+                generateNextBatch();
+            }, 300);
+        }
+
+        function pokeAbu() {
+            const abu = document.getElementById('abu-svg');
+            abu.style.transform = `scale(1.2) rotate(${Math.random() > 0.5 ? 20 : -20}deg)`;
+            setTimeout(() => abu.style.transform = '', 300);
+            
+            let msg = pokeMsgs[Math.floor(Math.random() * pokeMsgs.length)];
+            setDialog(msg);
+            speak(msg, 1.5);
+            triggerConfettiSmall();
+        }
+
+        function setDialog(html) {
+            document.getElementById('dialog-box').innerHTML = html;
+        }
+
+        function showHint() {
+            const currentBtn = document.getElementById(`btn-${currentTarget}`);
+            if (currentBtn) {
+                currentBtn.classList.add('hint-glow');
+                let msg = scaffoldMsgs[Math.floor(Math.random() * scaffoldMsgs.length)];
+                setDialog(`${msg} 找 <span class="text-3xl text-red-500 font-black px-1">${currentTarget}</span>`);
+                speak(msg, 1.0, 1.1); // softer voice for hint
+            }
+        }
+
+        function resetHintTimer() {
+            clearTimeout(hintTimer);
+            // Dynamic difficulty: if they are doing well, wait longer before hinting
+            let delay = 3500 + (comboCount * 500);
+            if (delay > 8000) delay = 8000;
+            hintTimer = setTimeout(showHint, delay);
+        }
+
+        function generateNextBatch() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            document.getElementById('victory-screen').classList.add('hidden');
+            document.body.classList.remove('fever-mode');
+            document.getElementById('abu-cape').classList.add('hidden');
+            document.getElementById('fever-crown').classList.add('hidden');
+
+            batchStart = Math.floor((currentTarget - 1) / 10) * 10 + 1;
+            let numbers = [];
+            for(let i=batchStart; i < batchStart + 10 && i <= 100; i++) {
+                numbers.push(i);
+            }
+            
+            // Randomize array
+            numbers.sort(() => Math.random() - 0.5);
+
+            numbers.forEach(num => {
+                let btn = document.createElement('button');
+                btn.id = `btn-${num}`;
+                btn.innerText = num;
+                btn.className = "num-card text-5xl sm:text-7xl font-black py-8 sm:py-12 border-2 border-transparent focus:outline-none touch-manipulation";
+                
+                // Dynamic Difficulty Rotation
+                if (levelDifficulty > 0) {
+                    let rot = (Math.random() - 0.5) * 15; // rotate up to +-7.5 deg
+                    btn.style.transform = `rotate(${rot}deg)`;
+                }
+
+                btn.onclick = () => handleTap(num, btn);
+                board.appendChild(btn);
+            });
+
+            boardStartTime = Date.now();
+            updateProgress();
+            setDialog(`澔澔，找出 <span id="target-display" class="text-4xl text-red-500 font-black px-1">${currentTarget}</span>`);
+            resetHintTimer();
+        }
+
+        function handleTap(selectedNumber, btnElem) {
+            if (selectedNumber === currentTarget) {
+                // CORRECT TAP
+                clearTimeout(hintTimer);
+                comboCount++;
+                
+                playSuccessSound(comboCount);
+                speak(selectedNumber.toString(), 1.2, 1.5);
+                
+                // Visuals
+                btnElem.classList.add('correct-card');
+                btnElem.classList.remove('hint-glow');
+                btnElem.style.transform = ''; // Clear dynamic rotation if any
+                
+                // A-bu interaction
+                document.getElementById('abu-svg').classList.add('abu-cheer');
+                setTimeout(() => document.getElementById('abu-svg').classList.remove('abu-cheer'), 600);
+                
+                // Heart particles on tap location
+                partyConfetti(btnElem);
+
+                currentTarget++;
+                updateProgress();
+
+                // Check Batch Completion
+                if((currentTarget - 1) % 10 === 0 || currentTarget > 100) {
+                    handleBatchComplete();
+                } else {
+                    let cheer = goodJobMsgs[Math.floor(Math.random() * goodJobMsgs.length)];
+                    setDialog(`${cheer}<br>下一個： <span class="text-4xl text-red-500 font-black px-1">${currentTarget}</span>`);
+                    resetHintTimer();
+                }
+
+            } else {
+                // WRONG TAP - ZERO PENALTY. Just scaffold.
+                // Reset combo count for dynamic difficulty
+                comboCount = 0;
+                
+                // Gentle visual jiggle (not jarring)
+                btnElem.style.transform = "rotate(3deg) scale(0.95)";
+                setTimeout(() => btnElem.style.transform = "", 150);
+                
+                setDialog(`哎呀，那是 ${selectedNumber}！<br>我們要找的是 <span class="text-4xl text-red-500 font-black px-1">${currentTarget}</span>`);
+                // Force hint to appear immediately to prevent frustration
+                clearTimeout(hintTimer);
+                showHint();
+            }
+        }
+
+        function updateProgress() {
+            let progress = currentTarget - 1;
+            document.getElementById('progress-fill').style.width = `${progress}%`;
+            document.getElementById('progress-text').innerText = progress;
+            
+            if (progress % 10 === 5 && comboCount >= 5) {
+                triggerFeverEvent(); // Mini celebration halfway
+            }
+        }
+
+        function triggerFeverEvent() {
+            document.body.classList.add('fever-mode');
+            document.getElementById('abu-cape').classList.remove('hidden');
+            document.getElementById('fever-crown').classList.remove('hidden');
+            speak("超級澔澔狂熱時間！", 1.5, 1.3);
+            confetti({
+                particleCount: 100,
+                spread: 100,
+                origin: { y: 0.1 },
+                colors: ['#fde047', '#ef4444', '#3b82f6']
+            });
+        }
+
+        function handleBatchComplete() {
+            clearTimeout(hintTimer);
+            
+            // DDA
+            let timeTaken = (Date.now() - boardStartTime) / 1000;
+            if (timeTaken < 15 && comboCount > 5) {
+                levelDifficulty = 1; // Speed run! Next round is tilted
+            } else {
+                levelDifficulty = 0;
+            }
+
+            let levelStr = currentTarget > 100 ? "100" : (currentTarget - 1).toString();
+            
+            setTimeout(() => {
+                document.getElementById('victory-screen').classList.remove('hidden');
+                document.getElementById('victory-title').innerText = currentTarget > 100 ? "宇宙破關！冠軍澔澔🏆" : `${levelStr} 分達成！`;
+                speak(currentTarget > 100 ? "宇宙最強澔澔，一百分過關！" : `太棒了，完成到 ${levelStr}！`, 1.3);
+                
+                // Massive celebration
+                var duration = 3000;
+                var end = Date.now() + duration;
+
+                (function frame() {
+                    confetti({
+                        particleCount: 5,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 },
+                        colors: ['#fde047', '#ef4444']
+                    });
+                    confetti({
+                        particleCount: 5,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 },
+                        colors: ['#3b82f6', '#10b981']
+                    });
+
+                    if (Date.now() < end) {
+                        requestAnimationFrame(frame);
+                    }
+                }());
+
+                if(currentTarget > 100) {
+                    let btn = document.getElementById('next-batch-btn');
+                    btn.innerText = "重新冒險🚀";
+                    btn.onclick = () => { currentTarget = 1; generateNextBatch(); };
+                }
+            }, 500);
+        }
+
+        function partyConfetti(btn) {
+            const rect = btn.getBoundingClientRect();
+            // Convert rect to proportional canvas coordinates
+            const x = (rect.left + rect.width / 2) / window.innerWidth;
+            const y = (rect.top + rect.height / 2) / window.innerHeight;
+            
+            confetti({
+                particleCount: 20,
+                startVelocity: 20,
+                spread: 360,
+                origin: { x: x, y: y },
+                colors: ['#ffc0cb', '#ff69b4'],
+                shapes: ['circle'],
+                ticks: 50,
+                disableForReducedMotion: true
+            });
+        }
+
+        function triggerConfettiSmall() {
+            confetti({
+                particleCount: 30,
+                spread: 60,
+                origin: { y: 0.6 },
+                startVelocity: 15
+            });
+        }
+        
+        // Prevent context menu to keep game smooth on long press
+        document.addEventListener('contextmenu', event => event.preventDefault());
+    </script>
+</body>
+</html>
