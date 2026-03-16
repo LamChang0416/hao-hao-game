@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>阿布蓋房子 🏠 (建築大師澔澔)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Noto+Sans+TC:wght@900&display=swap');
+
+        *, body, html { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            width: 100vw; height: 100vh; overflow: hidden;
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(180deg, #87ceeb 0%, #e0f7fa 60%, #a5d6a7 100%);
+            touch-action: none;
+            user-select: none;
+        }
+
+        /* --- Layout --- */
+        #game-layout {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Left: Block Palette */
+        #palette {
+            width: 120px;
+            min-width: 100px;
+            height: 100%;
+            background: rgba(255,255,255,0.5);
+            backdrop-filter: blur(10px);
+            border-right: 3px solid rgba(255,255,255,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 8px;
+            gap: 14px;
+            z-index: 20;
+            overflow-y: auto;
+        }
+
+        .palette-block {
+            cursor: grab;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+            transition: transform 0.15s, box-shadow 0.15s;
+            flex-shrink: 0;
+        }
+        .palette-block:active { transform: scale(0.9); cursor: grabbing; }
+
+        /* Right: Build Zone (Matter.js Canvas) */
+        #build-zone {
+            flex: 1;
+            position: relative;
+        }
+
+        #build-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+        }
+
+        /* Blueprint Ghost Overlay (SVG) */
+        #blueprint-svg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Top HUD */
+        #hud {
+            position: absolute;
+            top: 12px; left: 50%; transform: translateX(-50%);
+            z-index: 30;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .glass {
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(8px);
+            border: 2px solid white;
+            border-radius: 20px;
+            padding: 8px 20px;
+            font-weight: 900;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        /* A-Bu Architect */
+        #abu-area {
+            position: absolute;
+            bottom: 16px; right: 16px;
+            z-index: 30;
+            display: flex;
+            flex-direction: row-reverse;
+            align-items: flex-end;
+            gap: 12px;
+        }
+
+        .chat-bubble {
+            background: white;
+            border-radius: 20px;
+            padding: 10px 16px;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #1e293b;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            max-width: 200px;
+            position: relative;
+        }
+        .chat-bubble::after {
+            content: ''; position: absolute; right: -12px; bottom: 20px;
+            border-width: 8px 0 8px 12px; border-style: solid;
+            border-color: transparent transparent transparent white;
+        }
+
+        @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+        #abu-svg { animation: bob 3s ease-in-out infinite; cursor: pointer; }
+        
+        /* Victory Screen */
+        #victory-screen {
+            position: absolute; inset: 0; z-index: 100;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(6px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        /* Start Screen */
+        #start-screen {
+            position: absolute; inset: 0; z-index: 100;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d6a4f 100%);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            text-align: center; padding: 2rem;
+        }
+
+        .btn-big {
+            background: linear-gradient(to bottom, #fbbf24, #f59e0b);
+            box-shadow: 0 6px 0 #92400e;
+            border-radius: 99px;
+            font-size: 1.8rem;
+            font-weight: 900;
+            padding: 1rem 3rem;
+            color: #1c1917;
+            cursor: pointer;
+            transition: all 0.1s;
+            border: none;
+        }
+        .btn-big:active { transform: translateY(4px); box-shadow: 0 2px 0 #92400e; }
+
+        /* Ghost blueprint block style */
+        .blueprint-ghost { fill: rgba(100, 149, 237, 0.25); stroke: cornflowerblue; stroke-width: 3; stroke-dasharray: 8,4; }
+    </style>
+</head>
+<body>
+
+<!-- START SCREEN -->
+<div id="start-screen">
+    <h1 class="text-5xl sm:text-7xl font-black text-white italic tracking-tighter drop-shadow-2xl mb-4">阿布蓋房子！🏠</h1>
+    <p class="text-xl sm:text-2xl text-yellow-200 font-bold mb-12">拖拉積木，幫阿布蓋出夢幻新家！</p>
+    <div class="mb-12">
+        <svg width="160" height="160" viewBox="0 0 100 100">
+            <circle cx="50" cy="55" r="40" fill="#444"/>
+            <!-- Hard Hat -->
+            <ellipse cx="50" cy="28" rx="32" ry="12" fill="#fbbf24"/>
+            <rect x="20" y="26" width="60" height="10" fill="#fbbf24" rx="5"/>
+            <rect x="38" y="20" width="24" height="12" fill="#fbbf24" rx="4"/>
+            <circle cx="38" cy="50" r="7" fill="white"/><circle cx="39" cy="50" r="3.5" fill="#222"/>
+            <circle cx="62" cy="50" r="7" fill="white"/><circle cx="61" cy="50" r="3.5" fill="#222"/>
+            <path d="M 43 62 Q 50 70 57 62" stroke="#fbbf24" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <rect x="22" y="78" width="56" height="18" fill="#444" rx="9"/>
+        </svg>
+    </div>
+    <button class="btn-big" onclick="initGame()">開始蓋房子！🧱</button>
+</div>
+
+<!-- GAME LAYOUT -->
+<div id="game-layout" style="display:none">
+    <!-- Block Palette (Left) -->
+    <div id="palette">
+        <div class="glass text-center text-xs font-black text-gray-600 w-full">積木庫</div>
+        <!-- Blocks injected by JS -->
+    </div>
+
+    <!-- Build Zone (Right) -->
+    <div id="build-zone">
+        <canvas id="build-canvas"></canvas>
+        <svg id="blueprint-svg"></svg>
+    </div>
+</div>
+
+<!-- HUD (overlaid on game) -->
+<div id="hud" style="display:none">
+    <div class="glass text-gray-600 text-sm">第 <span id="level-num" class="text-2xl text-orange-500">1</span> 關</div>
+    <div class="glass"><span id="level-title" class="text-orange-600 font-black">幫阿布蓋地基！</span></div>
+    <div class="glass text-sm text-gray-600">進度 <span id="progress-txt" class="text-green-600 font-black">0%</span></div>
+</div>
+
+<!-- Abu Architect -->
+<div id="abu-area" style="display:none">
+    <svg id="abu-svg" width="80" height="80" viewBox="0 0 100 100" onclick="pokeAbu()">
+        <circle cx="50" cy="55" r="40" fill="#333"/>
+        <ellipse cx="50" cy="28" rx="30" ry="11" fill="#fbbf24"/>
+        <rect x="22" y="26" width="56" height="9" fill="#fbbf24" rx="4"/>
+        <rect x="38" y="21" width="22" height="10" fill="#fbbf24" rx="3"/>
+        <circle cx="38" cy="50" r="6" fill="white"/><circle cx="39" cy="50" r="3" fill="#222"/>
+        <circle cx="62" cy="50" r="6" fill="white"/><circle cx="61" cy="50" r="3" fill="#222"/>
+        <path d="M 43 62 Q 50 68 57 62" stroke="#fbbf24" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <rect x="26" y="80" width="48" height="15" fill="#2dd4bf" rx="6"/>
+    </svg>
+    <div class="chat-bubble" id="abu-msg">澔澔，我們一起蓋新家吧！🏗️</div>
+</div>
+
+<!-- VICTORY SCREEN -->
+<div id="victory-screen">
+    <div class="text-9xl mb-6">🏠</div>
+    <h2 class="text-6xl font-black text-white italic mb-4" id="victory-title">太棒了！</h2>
+    <p class="text-2xl text-yellow-200 font-bold mb-12" id="victory-subtitle">阿布的新家蓋好了！</p>
+    <button class="btn-big" id="victory-btn" onclick="nextLevel()">下一關！✨</button>
+</div>
+
+<script>
+const { Engine, Render, Runner, World, Bodies, Body, Composite, Events, Mouse, MouseConstraint } = Matter;
+
+// --- Level Definitions ---
+const levels = [
+    {
+        title: '幫阿布蓋地基！',
+        story: '澔澔！阿布要蓋新家！先把三塊大磚放到地面上，蓋好地基！',
+        blocks: ['wide','wide','wide'],
+        blueprint: (BW, BH) => [
+            { x: BW*0.5 - 110, y: BH - 60, w: 100, h: 40 },
+            { x: BW*0.5,       y: BH - 60, w: 100, h: 40 },
+            { x: BW*0.5 + 110, y: BH - 60, w: 100, h: 40 },
+        ]
+    },
+    {
+        title: '蓋牆壁！',
+        story: '地基蓋好了！現在疊起磚塊，幫阿布蓋出兩面牆！',
+        blocks: ['brick','brick','brick','brick','brick','brick'],
+        blueprint: (BW, BH) => [
+            { x: BW*0.5 - 80, y: BH - 70,  w: 60, h: 50 },
+            { x: BW*0.5 - 80, y: BH - 130, w: 60, h: 50 },
+            { x: BW*0.5 - 80, y: BH - 190, w: 60, h: 50 },
+            { x: BW*0.5 + 80, y: BH - 70,  w: 60, h: 50 },
+            { x: BW*0.5 + 80, y: BH - 130, w: 60, h: 50 },
+            { x: BW*0.5 + 80, y: BH - 190, w: 60, h: 50 },
+        ]
+    },
+    {
+        title: '加上屋頂！',
+        story: '牆壁蓋好了！現在幫阿布加上三角形的屋頂吧！',
+        blocks: ['tall','tall','roof'],
+        blueprint: (BW, BH) => [
+            { x: BW*0.5 - 70, y: BH - 110, w: 60, h: 120 },
+            { x: BW*0.5 + 70, y: BH - 110, w: 60, h: 120 },
+            { x: BW*0.5,      y: BH - 255, w: 130, h: 60, isTriangle: true },
+        ]
+    },
+    {
+        title: '裝門和窗戶！',
+        story: '快完成了！加上大門和窗戶，阿布就能住進去了！',
+        blocks: ['tall','wide','brick','brick','door','window'],
+        blueprint: (BW, BH) => [
+            { x: BW*0.5 - 90, y: BH - 110, w: 50, h: 120 },
+            { x: BW*0.5 + 90, y: BH - 110, w: 50, h: 120 },
+            { x: BW*0.5,      y: BH - 50,  w: 80, h: 60 },
+            { x: BW*0.5 - 90, y: BH - 210, w: 50, h: 50 },
+            { x: BW*0.5 + 90, y: BH - 210, w: 50, h: 50 },
+            { x: BW*0.5,      y: BH - 265, w: 180, h: 55, isTriangle: true },
+        ]
+    },
+    {
+        title: '自由蓋城堡！',
+        story: '澔澔太厲害了！現在自由地蓋出你的夢幻城堡！沒有規定，蓋得越高越好！',
+        blocks: ['wide','wide','brick','brick','brick','brick','tall','tall','roof','roof','window','door'],
+        blueprint: (BW, BH) => [],
+        isFree: true,
+    }
+];
+
+const blockDefs = {
+    wide:   { label:'寬磚',  w:110, h:40, color:'#ef4444', shadow:'#b91c1c', emoji:'🟥' },
+    brick:  { label:'方磚',  w:60,  h:50, color:'#f97316', shadow:'#c2410c', emoji:'🟧' },
+    tall:   { label:'高柱',  w:55,  h:120,color:'#a3e635', shadow:'#4d7c0f', emoji:'🟩' },
+    roof:   { label:'屋頂',  w:130, h:60, color:'#8b5cf6', shadow:'#5b21b6', emoji:'🔺' },
+    door:   { label:'大門',  w:65,  h:90, color:'#78716c', shadow:'#44403c', emoji:'🚪' },
+    window: { label:'窗戶',  w:55,  h:55, color:'#38bdf8', shadow:'#0369a1', emoji:'🔲' },
+};
+
+let engine, render, runner, mc;
+let currentLevel = 0;
+let dragging = null; // { block, offsetX, offsetY }
+let hintTimer = null;
+let placedCount = 0;
+
+const W = () => document.getElementById('build-zone').offsetWidth;
+const H = () => document.getElementById('build-zone').offsetHeight;
+
+function speak(text) {
+    window.speechSynthesis.cancel();
+    const msg = new SpeechSynthesisUtterance(text);
+    msg.lang = 'zh-TW'; msg.rate = 1.2;
+    window.speechSynthesis.speak(msg);
+    document.getElementById('abu-msg').innerText = text;
+}
+
+function pokeAbu() {
+    const msgs = ['澔澔加油！你是最強建築師！','把積木放到藍色虛線裡面喔！','蓋高一點，阿布想要高高的！','小心不要倒塌了！'];
+    speak(msgs[Math.floor(Math.random()*msgs.length)]);
+    gsap.to('#abu-svg', { rotation: 15, duration: 0.2, yoyo: true, repeat: 1 });
+}
+
+function initGame() {
+    document.getElementById('start-screen').style.display = 'none';
+    document.getElementById('game-layout').style.display = 'flex';
+    document.getElementById('hud').style.display = 'flex';
+    document.getElementById('abu-area').style.display = 'flex';
+
+    const canvas = document.getElementById('build-canvas');
+    canvas.width = W(); canvas.height = H();
+
+    engine = Engine.create({ gravity: { x: 0, y: 1.5 } });
+    render = Render.create({
+        canvas,
+        engine,
+        options: { width: W(), height: H(), wireframes: false, background: 'transparent' }
+    });
+
+    // Ground & Walls
+    const ground = Bodies.rectangle(W()/2, H()+25, W()*2, 50, { isStatic: true, label:'ground', render:{ fillStyle:'#86efac' } });
+    const wallL  = Bodies.rectangle(-25, H()/2, 50, H()*2, { isStatic: true, label:'wall', render:{ fillStyle:'transparent' } });
+    const wallR  = Bodies.rectangle(W()+25, H()/2, 50, H()*2, { isStatic: true, label:'wall', render: { fillStyle:'transparent' } });
+    World.add(engine.world, [ground, wallL, wallR]);
+
+    Render.run(render);
+    runner = Runner.create();
+    Runner.run(runner, engine);
+
+    loadLevel(0);
+}
+
+function loadLevel(idx) {
+    currentLevel = idx;
+    placedCount = 0;
+    const level = levels[idx];
+
+    // Clear placed blocks
+    Composite.allBodies(engine.world)
+        .filter(b => b.label === 'placed')
+        .forEach(b => World.remove(engine.world, b));
+
+    // Update HUD
+    document.getElementById('level-num').innerText = idx + 1;
+    document.getElementById('level-title').innerText = level.title;
+    document.getElementById('progress-txt').innerText = '0%';
+    document.getElementById('victory-screen').style.display = 'none';
+
+    // Draw Blueprint
+    drawBlueprint(level);
+
+    // Render Palette
+    renderPalette(level.blocks);
+
+    resetHintTimer();
+    speak(level.story);
+}
+
+function drawBlueprint(level) {
+    const svg = document.getElementById('blueprint-svg');
+    svg.innerHTML = '';
+    const items = level.blueprint(W(), H());
+    items.forEach(item => {
+        if (item.isTriangle) {
+            const pts = [
+                [item.x - item.w/2, item.y + item.h/2],
+                [item.x + item.w/2, item.y + item.h/2],
+                [item.x, item.y - item.h/2]
+            ].map(p=>p.join(',')).join(' ');
+            const poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+            poly.setAttribute('points', pts);
+            poly.setAttribute('class','blueprint-ghost');
+            svg.appendChild(poly);
+        } else {
+            const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+            rect.setAttribute('x', item.x - item.w/2);
+            rect.setAttribute('y', item.y - item.h/2);
+            rect.setAttribute('width', item.w);
+            rect.setAttribute('height', item.h);
+            rect.setAttribute('class','blueprint-ghost');
+            svg.appendChild(rect);
+        }
+    });
+}
+
+function renderPalette(blockTypes) {
+    const palette = document.getElementById('palette');
+    // Keep first child (label)
+    while (palette.children.length > 1) palette.removeChild(palette.lastChild);
+
+    blockTypes.forEach(type => {
+        const def = blockDefs[type];
+        const el = document.createElement('div');
+        el.className = 'palette-block';
+        el.style.cssText = `width:${Math.min(80, def.w*0.65)}px; height:${Math.min(60, def.h*0.65)}px; background:${def.color}; box-shadow:0 4px 0 ${def.shadow}`;
+        el.title = def.label;
+        el.dataset.blockType = type;
+        el.innerHTML = `<span style="font-size:1.5rem">${def.emoji}</span>`;
+
+        // Touch & Mouse drag from palette
+        el.addEventListener('mousedown', (e) => startDragFromPalette(e, type, el));
+        el.addEventListener('touchstart', (e) => startDragFromPalette(e, type, el), { passive: false });
+        palette.appendChild(el);
+    });
+}
+
+// --- Dragging Logic ---
+let dragEl = null, dragType = null;
+let dragX = 0, dragY = 0;
+
+function startDragFromPalette(e, type, sourceEl) {
+    e.preventDefault();
+    const pos = getEventPos(e);
+    const def = blockDefs[type];
+
+    dragType = type;
+    dragEl = document.createElement('div');
+    dragEl.style.cssText = `
+        position:fixed; width:${def.w}px; height:${def.h}px;
+        background:${def.color}; border-radius:12px;
+        display:flex;align-items:center;justify-content:center;
+        font-size:2rem; font-weight:900; color:white;
+        box-shadow:0 8px 20px rgba(0,0,0,0.3);
+        pointer-events:none; z-index:999;
+        transform:translate(-50%,-50%);
+        border:4px solid white;
+    `;
+    dragEl.innerHTML = `<span>${def.emoji}</span>`;
+    document.body.appendChild(dragEl);
+    moveDragEl(pos.x, pos.y);
+
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('touchmove', onDragMove, {passive:false});
+    window.addEventListener('mouseup', onDragEnd);
+    window.addEventListener('touchend', onDragEnd);
+}
+
+function onDragMove(e) {
+    if (!dragEl) return;
+    e.preventDefault();
+    const pos = getEventPos(e);
+    moveDragEl(pos.x, pos.y);
+}
+
+function moveDragEl(x, y) {
+    dragX = x; dragY = y;
+    dragEl.style.left = x + 'px';
+    dragEl.style.top = y + 'px';
+}
+
+function onDragEnd(e) {
+    if (!dragEl) return;
+    window.removeEventListener('mousemove', onDragMove);
+    window.removeEventListener('touchmove', onDragMove);
+    window.removeEventListener('mouseup', onDragEnd);
+    window.removeEventListener('touchend', onDragEnd);
+
+    const pos = getEventPos(e, true);
+    const zone = document.getElementById('build-zone').getBoundingClientRect();
+
+    // Only place if dropped inside build zone
+    if (pos.x > zone.left && pos.x < zone.right && pos.y > zone.top && pos.y < zone.bottom) {
+        const localX = pos.x - zone.left;
+        const localY = pos.y - zone.top;
+        placeBlock(dragType, localX, localY);
+    }
+
+    document.body.removeChild(dragEl);
+    dragEl = null; dragType = null;
+}
+
+function placeBlock(type, x, y) {
+    const def = blockDefs[type];
+    const body = Bodies.rectangle(x, y, def.w, def.h, {
+        restitution: 0.2,
+        friction: 0.8,
+        frictionStatic: 1.0,
+        label: 'placed',
+        render: {
+            fillStyle: def.color,
+            strokeStyle: 'white',
+            lineWidth: 3,
+        }
+    });
+    body.blockType = type;
+    World.add(engine.world, body);
+    placedCount++;
+    checkProgress();
+    resetHintTimer();
+
+    // Feedback SFX
+    playTock();
+}
+
+function getEventPos(e, useLast = false) {
+    if (useLast && e.changedTouches && e.changedTouches.length > 0) {
+        return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    }
+    if (e.touches && e.touches.length > 0) {
+        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+}
+
+// --- Progress Check ---
+function checkProgress() {
+    const level = levels[currentLevel];
+    if (level.isFree) {
+        const pct = Math.min(100, placedCount * 10);
+        document.getElementById('progress-txt').innerText = pct + '%';
+        if (placedCount >= 8) handleVictory();
+        return;
+    }
+
+    const blueprintItems = level.blueprint(W(), H());
+    const bodies = Composite.allBodies(engine.world).filter(b => b.label === 'placed');
+    const matched = new Set();
+
+    blueprintItems.forEach((item, idx) => {
+        bodies.forEach(body => {
+            if (matched.has(idx)) return;
+            const bx = body.position.x, by = body.position.y;
+            const inX = bx > item.x - item.w * 1.2 && bx < item.x + item.w * 1.2;
+            const inY = by > item.y - item.h * 1.2 && by < item.y + item.h * 1.2;
+            if (inX && inY) matched.add(idx);
+        });
+    });
+
+    const pct = blueprintItems.length === 0 ? 0 : Math.min(100, Math.round((matched.size / blueprintItems.length) * 100));
+    document.getElementById('progress-txt').innerText = pct + '%';
+
+    if (pct >= 70) {
+        setTimeout(handleVictory, 500);
+    }
+}
+
+function handleVictory() {
+    const level = levels[currentLevel];
+    confetti({ particleCount: 180, spread: 90, origin: { y: 0.6 } });
+    speak('澔澔太厲害了！房子蓋好了！你是最強的小建築師！');
+
+    const vs = document.getElementById('victory-screen');
+    document.getElementById('victory-title').innerText = `第 ${currentLevel+1} 關完成！🏆`;
+    const isLast = currentLevel >= levels.length - 1;
+    document.getElementById('victory-subtitle').innerText = isLast ? '澔澔完成所有任務！太厲害了！🌟' : '阿布的家越來越漂亮了！繼續蓋！';
+    document.getElementById('victory-btn').innerText = isLast ? '再玩一次！🔄' : '下一關！✨';
+    vs.style.display = 'flex';
+}
+
+function nextLevel() {
+    if (currentLevel >= levels.length - 1) {
+        loadLevel(0);
+    } else {
+        loadLevel(currentLevel + 1);
+    }
+}
+
+// --- Hint System ---
+function resetHintTimer() {
+    if (hintTimer) clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => {
+        const level = levels[currentLevel];
+        const hints = [
+            `把積木拖到藍色虛線裡面喔！`,
+            `${level.blocks[0] ? blockDefs[level.blocks[0]].label : '積木'}要放在下面打地基！`,
+            '先蓋底部，再往上疊！',
+        ];
+        speak(hints[Math.floor(Math.random() * hints.length)]);
+        // Pulse blueprint
+        gsap.fromTo('#blueprint-svg', { opacity: 0.3 }, { opacity: 1, duration: 0.5, repeat: 3, yoyo: true });
+    }, 20000);
+}
+
+// --- Sound ---
+let audioCtx;
+function playTock() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+}
+
+// --- Continuous Progress Check Loop ---
+function loop() {
+    checkProgress();
+    requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize', () => { location.reload(); });
+</script>
+
+<!-- Kick off the progress loop after page loads -->
+<script>window.addEventListener('load', () => requestAnimationFrame(loop));</script>
+</body>
+</html>
