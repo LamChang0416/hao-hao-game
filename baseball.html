@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>阿布棒球：魔球大挑戰 ⚾ (澔澔大聯盟)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Matter.js Physics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    
+    <!-- GSAP for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <!-- Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@900&family=Noto+Sans+TC:wght@900&display=swap');
+        
+        body, html {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+            background: #2d6a4f; /* Stadium Green */
+            touch-action: none;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%; height: 100%;
+            background: linear-gradient(180deg, #1e3a5f 0%, #2e5b88 50%, #4c8a5a 50%, #2d6a4f 100%);
+        }
+
+        /* Stadium Background */
+        .stadium-light {
+            position: absolute;
+            top: 20px;
+            width: 100px; height: 40px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            filter: blur(20px);
+            z-index: 1;
+        }
+
+        /* Batting UI */
+        #bat {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) rotate(45deg);
+            width: 20px;
+            height: 180px;
+            background: linear-gradient(to bottom, #d97706, #92400e);
+            border-radius: 10px;
+            z-index: 10;
+            transform-origin: bottom center;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+        }
+
+        /* HUD Overlay */
+        .hud-panel {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: white;
+            padding: 10px 20px;
+            z-index: 50;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        /* A-Bu Coach */
+        #abu-coach {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 60;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .chat-bubble {
+            background: white;
+            border-radius: 20px;
+            padding: 12px 20px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 10px;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            max-width: 200px;
+            font-size: 1.1rem;
+        }
+        .chat-bubble::after {
+            content: ''; position: absolute; bottom: -10px; right: 30px;
+            border-width: 10px 10px 0; border-style: solid; border-color: white transparent;
+        }
+
+        /* Start Screen */
+        #start-screen {
+            position: absolute; inset: 0;
+            background: rgba(15, 23, 42, 0.9);
+            z-index: 100;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            text-align: center;
+            color: white;
+        }
+
+        .btn-play {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1c1917;
+            padding: 15px 40px;
+            border-radius: 99px;
+            font-size: 2rem;
+            font-weight: 900;
+            box-shadow: 0 8px 0 #92400e;
+            transition: all 0.1s;
+        }
+        .btn-play:active { transform: translateY(4px); box-shadow: 0 2px 0 #92400e; }
+
+        /* Animation Classes */
+        .swinging { animation: batSwing 0.2s ease-out; }
+        @keyframes batSwing {
+            0% { transform: translateX(-50%) rotate(45deg); }
+            50% { transform: translateX(-50%) rotate(-120deg); }
+            100% { transform: translateX(-50%) rotate(45deg); }
+        }
+
+        .flash-text {
+            position: absolute;
+            top: 40%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 6rem;
+            font-weight: 900;
+            font-style: italic;
+            color: #fbbf24;
+            text-shadow: 0 10px 0 #92400e, 0 20px 40px rgba(0,0,0,0.5);
+            z-index: 80;
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- Stadium Lights -->
+    <div class="stadium-light" style="left: 10%;"></div>
+    <div class="stadium-light" style="left: 40%;"></div>
+    <div class="stadium-light" style="left: 70%;"></div>
+    <div class="stadium-light" style="left: 90%;"></div>
+
+    <!-- HUD -->
+    <div class="hud-panel" style="top: 20px; left: 20px;">
+        <div class="text-xs opacity-60 uppercase tracking-widest">任務目標</div>
+        <div id="mission-text" class="text-xl font-black">準備開賽</div>
+    </div>
+    
+    <div class="hud-panel" style="top: 20px; right: 20px;">
+        <div class="text-xs opacity-60 uppercase tracking-widest">得分</div>
+        <div id="score" class="text-3xl font-black text-yellow-400">0</div>
+    </div>
+
+    <!-- Feedback Text -->
+    <div id="feedback-text" class="flash-text">HOME RUN!</div>
+
+    <!-- A-Bu Coach -->
+    <div id="abu-coach">
+        <div class="chat-bubble" id="abu-bubble">澔澔，準備好了嗎？</div>
+        <svg id="abu-svg" width="100" height="100" viewBox="0 0 100 100">
+            <circle cx="50" cy="55" r="40" fill="#333" />
+            <!-- Baseball Cap -->
+            <path d="M 25 35 Q 50 15 75 35" fill="#ef4444" />
+            <rect x="20" y="32" width="60" height="8" fill="#ef4444" rx="4" />
+            <circle cx="38" cy="52" r="6" fill="white" /><circle cx="39" cy="52" r="3" fill="black" />
+            <circle cx="62" cy="52" r="6" fill="white" /><circle cx="61" cy="52" r="3" fill="black" />
+            <path d="M 45 62 L 55 62 Q 50 68 45 62" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" />
+        </svg>
+    </div>
+
+    <!-- Bat -->
+    <div id="bat"></div>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1 class="text-6xl sm:text-8xl font-black italic tracking-tighter mb-4 drop-shadow-2xl">HAOHAO MLB</h1>
+        <p class="text-2xl font-bold text-yellow-200 mb-12 uppercase tracking-widest">澔澔大聯盟：魔球挑戰</p>
+        <button class="btn-play" onclick="startGame()">站上打擊區！⚾</button>
+    </div>
+</div>
+
+<script>
+    const { Engine, Render, Runner, World, Bodies, Body, Composite, Events } = Matter;
+
+    let engine, runner;
+    let score = 0;
+    let comboCount = 0;
+    let targetColor = '';
+    let targetShape = '';
+    let isGameRunning = false;
+    let spawnTimer = null;
+    let canSwing = true;
+
+    const colors = [
+        { name: '紅色', value: '#ef4444' },
+        { name: '藍色', value: '#3b82f6' },
+        { name: '綠色', value: '#22c55e' },
+        { name: '黃色', value: '#eab308' },
+        { name: '紫色', value: '#a855f7' }
+    ];
+
+    const shapes = [
+        { name: '圓形', type: 'circle' },
+        { name: '正方形', type: 'rect' },
+        { name: '三角形', type: 'poly', sides: 3 },
+        { name: '星形', type: 'star' }
+    ];
+
+    function speak(text) {
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'zh-TW';
+        msg.rate = 1.0; // Slower for tablet as requested
+        window.speechSynthesis.speak(msg);
+        document.getElementById('abu-bubble').innerText = text;
+    }
+
+    function startGame() {
+        document.getElementById('start-screen').style.display = 'none';
+        isGameRunning = true;
+        
+        // Physics Engine Setup
+        engine = Engine.create({ gravity: { x: 0, y: 0.1 } });
+        render = Render.create({
+            element: document.getElementById('game-container'),
+            engine: engine,
+            options: {
+                width: window.innerWidth,
+                height: window.innerHeight,
+                wireframes: false,
+                background: 'transparent'
+            }
+        });
+
+        Render.run(render);
+        runner = Runner.create();
+        Runner.run(runner, engine);
+
+        // Input handling
+        window.addEventListener('mousedown', swingBat);
+        window.addEventListener('touchstart', swingBat);
+
+        setNewMission();
+        startSpawning();
+    }
+
+    function setNewMission() {
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const shape = shapes[Math.floor(Math.random() * shapes.length)];
+        targetColor = color;
+        targetShape = shape;
+        
+        document.getElementById('mission-text').innerHTML = 
+            `<span style="color:${color.value}">${color.name}</span> 的 <span class="text-white">${shape.name}</span>`;
+        
+        speak(`澔澔，看準喔！打擊 ${color.name} 的 ${shape.name}！`);
+    }
+
+    function startSpawning() {
+        spawnTimer = setInterval(() => {
+            if (!isGameRunning) return;
+            spawnBall();
+        }, 1200);
+    }
+
+    function spawnBall() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        
+        // Randomize ball attributes
+        const isTarget = Math.random() > 0.6;
+        let color, shape;
+        
+        if (isTarget) {
+            color = targetColor;
+            shape = targetShape;
+        } else {
+            color = colors[Math.floor(Math.random() * colors.length)];
+            shape = shapes[Math.floor(Math.random() * shapes.length)];
+            // Prevent accidental target match
+            if (color.name === targetColor.name && shape.name === targetShape.name) {
+                color = colors[(colors.indexOf(color) + 1) % colors.length];
+            }
+        }
+
+        const size = 35;
+        const x = Math.random() * w;
+        const y = -50;
+        
+        let ball;
+        if (shape.type === 'circle') {
+            ball = Bodies.circle(x, y, size, {
+                render: { fillStyle: color.value, strokeStyle: '#fff', lineWidth: 3 }
+            });
+        } else if (shape.type === 'rect') {
+            ball = Bodies.rectangle(x, y, size * 1.5, size * 1.5, {
+                render: { fillStyle: color.value, strokeStyle: '#fff', lineWidth: 3 }
+            });
+        } else {
+            ball = Bodies.polygon(x, y, shape.sides || 5, size * 1.2, {
+                render: { fillStyle: color.value, strokeStyle: '#fff', lineWidth: 3 }
+            });
+        }
+
+        ball.colorName = color.name;
+        ball.shapeName = shape.name;
+        ball.label = 'ball';
+        
+        // Pitch the ball down with some variance
+        Body.setVelocity(ball, { 
+            x: (w/2 - x) * 0.015 + (Math.random() - 0.5) * 5, 
+            y: 8 + Math.random() * 4 
+        });
+        
+        World.add(engine.world, ball);
+
+        // Cleanup
+        setTimeout(() => {
+            if (ball.world) World.remove(engine.world, ball);
+        }, 3000);
+    }
+
+    function swingBat() {
+        if (!canSwing || !isGameRunning) return;
+        canSwing = false;
+        
+        const batEl = document.getElementById('bat');
+        batEl.classList.add('swinging');
+        
+        // Hit Detection
+        const batX = window.innerWidth / 2;
+        const batY = window.innerHeight - 150;
+        const hitZoneRadius = 150;
+
+        const bodies = Composite.allBodies(engine.world);
+        let hitSomething = false;
+
+        bodies.forEach(body => {
+            if (body.label === 'ball') {
+                const dx = body.position.x - batX;
+                const dy = body.position.y - batY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                if (dist < hitZoneRadius) {
+                    hitSomething = true;
+                    processHit(body);
+                }
+            }
+        });
+
+        if (!hitSomething) {
+            playSfx(200, 'square'); // Whoosh sound
+        }
+
+        setTimeout(() => {
+            batEl.classList.remove('swinging');
+            canSwing = true;
+        }, 200);
+    }
+
+    function processHit(ball) {
+        const isCorrect = ball.colorName === targetColor.name && ball.shapeName === targetShape.name;
+
+        if (isCorrect) {
+            score += 10;
+            comboCount++;
+            document.getElementById('score').innerText = score;
+            
+            showFeedback('HOME RUN!', '#fbbf24');
+            playSfx(800, 'sine');
+            confetti({ particleCount: 50, spread: 60, origin: { x: 0.5, y: 0.8 } });
+            
+            // Blast the ball out of the stadium
+            Body.setVelocity(ball, { x: (Math.random() - 0.5) * 20, y: -25 });
+            Body.setAngularVelocity(ball, 0.2);
+            
+            if (comboCount >= 3) {
+                comboCount = 0;
+                setNewMission();
+            }
+        } else {
+            showFeedback('FOUL BALL!', '#ef4444');
+            playSfx(150, 'sawtooth');
+            // Knock ball away
+            Body.setVelocity(ball, { x: 15, y: -5 });
+            speak("不對喔，再看清楚一點！");
+        }
+    }
+
+    function showFeedback(text, color) {
+        const el = document.getElementById('feedback-text');
+        el.innerText = text;
+        el.style.color = color;
+        gsap.fromTo(el, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1.2, duration: 0.3, yoyo: true, repeat: 1 });
+    }
+
+    function playSfx(freq, type) {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + 0.3);
+    }
+
+    window.addEventListener('resize', () => { if (isGameRunning) location.reload(); });
+</script>
+
+</body>
+</html>
