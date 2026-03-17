@@ -320,7 +320,7 @@ const H = () => document.getElementById('build-zone').offsetHeight;
 function speak(text) {
     window.speechSynthesis.cancel();
     const msg = new SpeechSynthesisUtterance(text);
-    msg.lang = 'zh-TW'; msg.rate = 1.2;
+    msg.lang = 'zh-TW'; msg.rate = 1.0;
     window.speechSynthesis.speak(msg);
     document.getElementById('abu-msg').innerText = text;
 }

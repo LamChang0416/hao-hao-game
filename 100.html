@@ -306,7 +306,7 @@
             speechSynthesis.onvoiceschanged = setupVoices;
         }
 
-        function speak(text, pitch = 1.2, rate = 1.25) {
+        function speak(text, pitch = 1.2, rate = 1.0) {
             voiceSynthesizer.cancel(); 
             let msg = new SpeechSynthesisUtterance(text);
             if(preferredVoice) msg.voice = preferredVoice;

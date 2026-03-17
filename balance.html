@@ -292,7 +292,7 @@
             voiceSynthesizer.cancel(); 
             let msg = new SpeechSynthesisUtterance(text);
             msg.lang = 'zh-TW';
-            msg.rate = 1.35; // Fast, excited voice
+            msg.rate = 1.0; // Normal rate for clarity
             msg.pitch = 1.2;
             voiceSynthesizer.speak(msg);
         }
