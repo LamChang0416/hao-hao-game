@@ -235,7 +235,7 @@
         }
 
         // --- Matter.js Setup ---
-        const { Engine, Render, Runner, World, Bodies, Composite, MouseConstraint, Mouse, Events } = Matter;
+        const { Engine, Render, Runner, World, Bodies, Composite, MouseConstraint, Mouse, Events, Body } = Matter;
         let engine, runner, render;
         let itemsInCart = 0;
         let targetCount = 0;
@@ -262,27 +262,59 @@
             });
 
             // Boundaries
-            const ground = Bodies.rectangle(W/2, H + 50, W, 100, { isStatic: true });
-            const leftWall = Bodies.rectangle(-50, H/2, 100, H, { isStatic: true });
-            const rightWall = Bodies.rectangle(W + 50, H/2, 100, H, { isStatic: true });
+            const ground = Bodies.rectangle(W/2, H + 50, W*2, 100, { isStatic: true });
+            const ceiling = Bodies.rectangle(W/2, -100, W*2, 100, { isStatic: true }); // Prevent flying out
+            const leftWall = Bodies.rectangle(-50, H/2, 100, H*2, { isStatic: true });
+            const rightWall = Bodies.rectangle(W + 50, H/2, 100, H*2, { isStatic: true });
             
-            // The Shopping Cart (V-Shape or U-Shape)
-            const cartBottom = Bodies.rectangle(W*0.7, H*0.75, 250, 20, { 
+            // The Shopping Cart
+            const cartBottom = Bodies.rectangle(W*0.75, H*0.9, 250, 20, { 
                 isStatic: true, render: { fillStyle: '#166534' }, label: 'cart' 
             });
-            const cartLeft = Bodies.rectangle(W*0.7 - 120, H*0.65, 20, 150, { 
+            const cartLeft = Bodies.rectangle(W*0.75 - 120, H*0.82, 20, 150, { 
                 isStatic: true, render: { fillStyle: '#22c55e' }, angle: -0.2, label: 'cart'
             });
-            const cartRight = Bodies.rectangle(W*0.7 + 120, H*0.65, 20, 150, { 
+            const cartRight = Bodies.rectangle(W*0.75 + 120, H*0.82, 20, 150, { 
                 isStatic: true, render: { fillStyle: '#22c55e' }, angle: 0.2, label: 'cart'
             });
 
-            // Add conveyor belt area (Visual only)
-            const conveyor = Bodies.rectangle(W*0.25, H*0.6, W*0.4, 40, { 
-                isStatic: true, render: { fillStyle: '#334155' }, label: 'conveyor'
+            // Pachinko Machine Elements (Slides & Gears)
+            // Tray 1: Slopes Right
+            const tray1 = Bodies.rectangle(W*0.25, H*0.25, W*0.4, 20, { 
+                isStatic: true, angle: 0.1, render: { fillStyle: '#334155' }, label: 'conveyor'
+            });
+            
+            // Tray 2: Catch from Tray 1, Slopes Left
+            const tray2 = Bodies.rectangle(W*0.7, H*0.45, W*0.5, 20, {
+                isStatic: true, angle: -0.12, render: { fillStyle: '#f59e0b' }
             });
 
-            World.add(engine.world, [ground, leftWall, rightWall, cartBottom, cartLeft, cartRight, conveyor]);
+            // Spinning Gear
+            const gearPart1 = Bodies.rectangle(W*0.35, H*0.6, 160, 25, { render: { fillStyle: '#3b82f6' } });
+            const gearPart2 = Bodies.rectangle(W*0.35, H*0.6, 25, 160, { render: { fillStyle: '#3b82f6' } });
+            const gearComposite = Body.create({
+                parts: [gearPart1, gearPart2],
+                friction: 0.1,
+                restitution: 0.6
+            });
+            const gearConstraint = Matter.Constraint.create({
+                pointA: { x: W*0.35, y: H*0.6 },
+                bodyB: gearComposite,
+                pointB: { x: 0, y: 0 },
+                stiffness: 1, length: 0, render: { visible: false }
+            });
+
+            // Tray 3: Slopes Right into the Cart
+            const tray3 = Bodies.rectangle(W*0.45, H*0.8, W*0.5, 20, {
+                isStatic: true, angle: 0.15, render: { fillStyle: '#eab308' }
+            });
+
+            World.add(engine.world, [
+                ground, ceiling, leftWall, rightWall, 
+                cartBottom, cartLeft, cartRight, 
+                tray1, tray2, tray3, 
+                gearComposite, gearConstraint
+            ]);
 
             // Add Mouse Control
             const mouse = Mouse.create(render.canvas);
@@ -329,11 +361,11 @@
                 .filter(b => b.label === 'item')
                 .forEach(b => World.remove(engine.world, b));
 
-            // Spawn items on the conveyor belt
+            // Spawn items on the top tray (Pachinko style)
             for (let i = 0; i < targetCount; i++) {
                 setTimeout(() => {
-                    spawnItem(W*0.1 + (i*40), H*0.4);
-                }, i * 300);
+                    spawnItem(W*0.1 + (i*15), H*0.1);
+                }, i * 400);
             }
 
             document.getElementById('numpad-container').style.display = 'none';

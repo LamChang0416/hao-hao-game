@@ -249,9 +249,9 @@ const levels = [
         story: '澔澔！阿布要蓋新家！先把三塊大磚放到地面上，蓋好地基！',
         blocks: ['wide','wide','wide'],
         blueprint: (BW, BH) => [
-            { x: BW*0.5 - 110, y: BH - 60, w: 100, h: 40 },
-            { x: BW*0.5,       y: BH - 60, w: 100, h: 40 },
-            { x: BW*0.5 + 110, y: BH - 60, w: 100, h: 40 },
+            { x: BW*0.5 - 110, y: BH - 20, w: 100, h: 40 },
+            { x: BW*0.5,       y: BH - 20, w: 100, h: 40 },
+            { x: BW*0.5 + 110, y: BH - 20, w: 100, h: 40 },
         ]
     },
     {
@@ -259,12 +259,12 @@ const levels = [
         story: '地基蓋好了！現在疊起磚塊，幫阿布蓋出兩面牆！',
         blocks: ['brick','brick','brick','brick','brick','brick'],
         blueprint: (BW, BH) => [
-            { x: BW*0.5 - 80, y: BH - 70,  w: 60, h: 50 },
-            { x: BW*0.5 - 80, y: BH - 130, w: 60, h: 50 },
-            { x: BW*0.5 - 80, y: BH - 190, w: 60, h: 50 },
-            { x: BW*0.5 + 80, y: BH - 70,  w: 60, h: 50 },
-            { x: BW*0.5 + 80, y: BH - 130, w: 60, h: 50 },
-            { x: BW*0.5 + 80, y: BH - 190, w: 60, h: 50 },
+            { x: BW*0.5 - 80, y: BH - 25,  w: 60, h: 50 },
+            { x: BW*0.5 - 80, y: BH - 75, w: 60, h: 50 },
+            { x: BW*0.5 - 80, y: BH - 125, w: 60, h: 50 },
+            { x: BW*0.5 + 80, y: BH - 25,  w: 60, h: 50 },
+            { x: BW*0.5 + 80, y: BH - 75, w: 60, h: 50 },
+            { x: BW*0.5 + 80, y: BH - 125, w: 60, h: 50 },
         ]
     },
     {
@@ -272,9 +272,9 @@ const levels = [
         story: '牆壁蓋好了！現在幫阿布加上三角形的屋頂吧！',
         blocks: ['tall','tall','roof'],
         blueprint: (BW, BH) => [
-            { x: BW*0.5 - 70, y: BH - 110, w: 60, h: 120 },
-            { x: BW*0.5 + 70, y: BH - 110, w: 60, h: 120 },
-            { x: BW*0.5,      y: BH - 255, w: 130, h: 60, isTriangle: true },
+            { x: BW*0.5 - 70, y: BH - 60, w: 60, h: 120 },
+            { x: BW*0.5 + 70, y: BH - 60, w: 60, h: 120 },
+            { x: BW*0.5,      y: BH - 150, w: 130, h: 60, isTriangle: true },
         ]
     },
     {
@@ -282,12 +282,12 @@ const levels = [
         story: '快完成了！加上大門和窗戶，阿布就能住進去了！',
         blocks: ['tall','wide','brick','brick','door','window'],
         blueprint: (BW, BH) => [
-            { x: BW*0.5 - 90, y: BH - 110, w: 50, h: 120 },
-            { x: BW*0.5 + 90, y: BH - 110, w: 50, h: 120 },
-            { x: BW*0.5,      y: BH - 50,  w: 80, h: 60 },
-            { x: BW*0.5 - 90, y: BH - 210, w: 50, h: 50 },
-            { x: BW*0.5 + 90, y: BH - 210, w: 50, h: 50 },
-            { x: BW*0.5,      y: BH - 265, w: 180, h: 55, isTriangle: true },
+            { x: BW*0.5 - 90, y: BH - 60, w: 50, h: 120 },
+            { x: BW*0.5 + 90, y: BH - 60, w: 50, h: 120 },
+            { x: BW*0.5,      y: BH - 45,  w: 65, h: 90 },
+            { x: BW*0.5 - 90, y: BH - 145, w: 50, h: 50 },
+            { x: BW*0.5 + 90, y: BH - 145, w: 50, h: 50 },
+            { x: BW*0.5,      y: BH - 200, w: 180, h: 55, isTriangle: true },
         ]
     },
     {
@@ -545,15 +545,20 @@ function checkProgress() {
     const blueprintItems = level.blueprint(W(), H());
     const bodies = Composite.allBodies(engine.world).filter(b => b.label === 'placed');
     const matched = new Set();
+    const usedBodies = new Set();
 
     blueprintItems.forEach((item, idx) => {
-        bodies.forEach(body => {
-            if (matched.has(idx)) return;
+        for (let body of bodies) {
+            if (matched.has(idx) || usedBodies.has(body.id)) continue;
             const bx = body.position.x, by = body.position.y;
             const inX = bx > item.x - item.w * 1.2 && bx < item.x + item.w * 1.2;
             const inY = by > item.y - item.h * 1.2 && by < item.y + item.h * 1.2;
-            if (inX && inY) matched.add(idx);
-        });
+            if (inX && inY) {
+                matched.add(idx);
+                usedBodies.add(body.id);
+                break;
+            }
+        }
     });
 
     const pct = blueprintItems.length === 0 ? 0 : Math.min(100, Math.round((matched.size / blueprintItems.length) * 100));

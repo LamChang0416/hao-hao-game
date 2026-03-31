@@ -375,7 +375,7 @@
             const angle = getAngle(e);
             if (activeHand === 'min') {
                 const snapped = Math.round(angle / 6) * 6; // Snap to minute
-                currentM = (snapped / 360) * 60 % 60;
+                currentM = Math.round((snapped / 360) * 60) % 60;
             } else {
                 const snapped = Math.round(angle / 30) * 30; // Snap to hour
                 currentH = (snapped / 360) * 12;
