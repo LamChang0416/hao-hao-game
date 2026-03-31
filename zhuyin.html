@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>阿布ㄅㄆㄇ大冒險 🔠</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Noto+Sans+TC:wght@900&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif; 
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: white; 
+            overflow: hidden; 
+            touch-action: manipulation; 
+            user-select: none; 
+        }
+        .screen { 
+            position: fixed; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 16px; gap: 12px;
+        }
+        .hidden { display: none !important; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .btn {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1c1917;
+            font-weight: 900; font-size: 1.4rem; padding: 14px 36px; border-radius: 99px;
+            border: none; cursor: pointer; box-shadow: 0 6px 0 #92400e;
+            transition: all .1s; font-family: inherit; width: 100%; max-width: 340px;
+        }
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #92400e; }
+        .btn:disabled { filter: grayscale(1); opacity: 0.6; cursor: not-allowed; box-shadow: none; transform: none; }
+        .btn-ghost {
+            background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.3);
+            color: white; font-size: 1rem; padding: 8px 20px; border-radius: 99px;
+            cursor: pointer; font-family: inherit; font-weight: 700; box-shadow: none;
+        }
+        .bubble {
+            background: white; color: #1e293b; border-radius: 18px; padding: 12px 20px;
+            font-size: 1.1rem; font-weight: 800; box-shadow: 0 4px 15px rgba(0,0,0,.3);
+            text-align: center; line-height: 1.4; position: relative;
+        }
+        .bubble::after {
+            content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+            border-width: 10px 10px 0; border-style: solid; border-color: white transparent transparent;
+        }
+        .num { font-size: clamp(3rem, 10vw, 5rem); font-weight: 900; line-height: 1; transition: color .3s; }
+        @keyframes bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+        .bob { animation: bob 2.5s ease-in-out infinite; }
+        
+        /* Island Map Styles */
+        .map-container { position: relative; width: 100%; max-width: 500px; height: 400px; margin: 20px 0; }
+        .island {
+            position: absolute; display: flex; flex-direction: column; align-items: center;
+            cursor: pointer; transition: transform 0.2s;
+        }
+        .island:hover { transform: scale(1.1); }
+        .island.locked { filter: grayscale(1); opacity: 0.5; pointer-events: none; }
+        .island-icon {
+            width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: 2.5rem; box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+            border: 4px solid rgba(255,255,255,0.8);
+        }
+        .island-title {
+            margin-top: 8px; font-weight: 900; background: rgba(0,0,0,0.6);
+            padding: 4px 12px; border-radius: 99px; font-size: 0.9rem;
+        }
+        .path-dot { position: absolute; width: 10px; height: 10px; background: rgba(255,255,255,0.4); border-radius: 50%; }
+
+        /* Tone Playground Styles */
+        .tone-btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; max-width: 400px; margin-top: 20px; }
+        .tone-btn {
+            background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 16px; padding: 20px 10px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;
+        }
+        .tone-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.3); }
+        .tone-symbol { font-size: 2.5rem; font-weight: 900; color: #fbbf24; line-height: 1; margin-bottom: 8px; font-family: 'Noto Sans TC'; }
+        .tone-desc { font-size: 1rem; font-weight: 800; color: #e2e8f0; }
+        .target-zhuyin { font-size: 4rem; font-weight: 900; letter-spacing: 5px; color: #60a5fa; text-shadow: 0 0 20px rgba(96, 165, 250, 0.5); }
+        
+        /* Factory Styles */
+        .bopomofo-block {
+            background: #cbd5e1; color: #1e293b; font-size: 2.5rem; font-weight: 900;
+            width: 70px; height: 70px; display: flex; align-items: center; justify-content: center;
+            border-radius: 16px; border-bottom: 6px solid #94a3b8; cursor: pointer; user-select: none;
+            transition: all 0.1s;
+        }
+        .bopomofo-block:active { transform: translateY(4px); border-bottom-width: 2px; margin-top: 4px; }
+        .bopomofo-block.selected { background: #fbbf24; border-color: #d97706; color: #78350f; }
+        .factory-slots { display: flex; justify-content: center; gap: 15px; margin: 30px 0; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 20px; }
+        .factory-slot {
+            width: 80px; height: 80px; border: 4px dashed rgba(255,255,255,0.3); border-radius: 16px;
+            display: flex; align-items: center; justify-content: center; position: relative;
+        }
+        
+        /* Top Navigation */
+        .top-nav { position: absolute; top: 16px; left: 16px; display: flex; gap: 10px; z-index: 100; }
+        
+        .char-reveal { font-size: 6rem; font-weight: 900; color: #fbbf24; text-shadow: 0 0 30px rgba(251,191,36,0.8); }
+        .char-pinyin { font-size: 2rem; color: #93c5fd; font-weight: 900; }
+    </style>
+</head>
+<body>
+
+    <!-- Top Nav -->
+    <div class="top-nav" id="top-nav" style="display:none;">
+        <button class="btn-ghost" onclick="returnToMap()">🗺️ 回地圖</button>
+    </div>
+
+    <!-- ===== SCREEN: START & MAP ===== -->
+    <div id="s-map" class="screen">
+        <h1 style="font-size: clamp(2rem, 8vw, 3rem); font-weight: 900; text-align: center; text-shadow: 0 4px 20px rgba(251, 191, 36, 0.5); color: #fbbf24; margin-bottom: 0;">阿布ㄅㄆㄇ大冒險</h1>
+        <p style="color: #c4b5fd; font-weight: 800; margin-bottom: 20px;">選一個島嶼開始探索魔法！</p>
+        
+        <div class="map-container">
+            <!-- Path dots (Decorative) -->
+            <div class="path-dot" style="top: 150px; left: 150px;"></div>
+            <div class="path-dot" style="top: 180px; left: 200px;"></div>
+            <div class="path-dot" style="top: 200px; left: 250px;"></div>
+            
+            <!-- Island 1 -->
+            <div class="island" style="top: 20px; left: 40px;" onclick="startLevel(1)">
+                <div class="island-icon" style="background: linear-gradient(135deg, #f43f5e, #be123c);">🎢</div>
+                <div class="island-title">1. 聲調遊樂園</div>
+                <div style="font-size: 0.8rem; color: #fca5a5; margin-top: 4px;">聽音辨位摸聲調</div>
+            </div>
+            
+            <!-- Island 2 -->
+            <div class="island" id="island-2" style="top: 180px; left: 280px;" onclick="startLevel(2)">
+                <div class="island-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">🏭</div>
+                <div class="island-title">2. 積木兵工廠</div>
+                <div style="font-size: 0.8rem; color: #93c5fd; margin-top: 4px;">組合注音小積木</div>
+            </div>
+
+            <!-- Island 3 -->
+            <div class="island" id="island-3" style="top: 300px; left: 60px;" onclick="startLevel(3)">
+                <div class="island-icon" style="background: linear-gradient(135deg, #10b981, #047857);">🎙️</div>
+                <div class="island-title">3. 大聲公魔法陣</div>
+                <div style="font-size: 0.8rem; color: #6ee7b7; margin-top: 4px;">自己開口唸唸看</div>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.3); padding: 15px 25px; border-radius: 99px;">
+            <div class="bob" style="width: 50px; height: 50px;" onclick="playWelcome()">
+                <svg width="100%" height="100%" viewBox="0 0 100 100">
+                    <polygon points="50,2 28,42 72,42" fill="#7c3aed"/>
+                    <rect x="18" y="40" width="64" height="10" rx="5" fill="#7c3aed"/>
+                    <circle cx="50" cy="67" r="30" fill="#333"/>
+                    <circle cx="39" cy="64" r="6.5" fill="white"/><circle cx="40" cy="64" r="3" fill="#111"/>
+                    <circle cx="61" cy="64" r="6.5" fill="white"/><circle cx="60" cy="64" r="3" fill="#111"/>
+                    <path d="M42 76 Q50 84 58 76" stroke="#fbbf24" stroke-width="3" fill="none" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div style="font-weight: 800; color: #e2e8f0; font-size: 1.1rem;" id="map-msg">點擊島嶼開始冒險吧！</div>
+        </div>
+    </div>
+
+    <!-- ===== SCREEN: LEVEL 1 (Tone Rollercoaster) ===== -->
+    <div id="s-level-1" class="screen hidden">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="font-size: 1.8rem; color: #fca5a5; font-weight: 900; margin-bottom: 8px;">🎢 聲調遊樂園</h2>
+            <div class="bubble bob" id="l1-bubble" style="max-width: 300px; margin: 0 auto; margin-top: 15px;">聽阿布唸，這是第幾聲？</div>
+        </div>
+
+        <div class="glass-panel" style="width: 100%; max-width: 400px; text-align: center;">
+            <div id="l1-zhuyin" class="target-zhuyin">ㄇㄚ</div>
+            <button class="btn-ghost" style="margin-top: 15px; border-color: #fbbf24; color: #fbbf24;" onclick="replayL1Audio()">🔊 再聽一次</button>
+        </div>
+
+        <div class="tone-btn-grid">
+            <div class="tone-btn" onclick="checkL1Tone(1)">
+                <div class="tone-symbol">￣</div><div class="tone-desc">一聲平平飛</div>
+            </div>
+            <div class="tone-btn" onclick="checkL1Tone(2)">
+                <div class="tone-symbol">ˊ</div><div class="tone-desc">二聲向上爬</div>
+            </div>
+            <div class="tone-btn" onclick="checkL1Tone(3)">
+                <div class="tone-symbol">ˇ</div><div class="tone-desc">三聲打個滾</div>
+            </div>
+            <div class="tone-btn" onclick="checkL1Tone(4)">
+                <div class="tone-symbol">ˋ</div><div class="tone-desc">四聲向下跳</div>
+            </div>
+        </div>
+        <div id="l1-result" style="height: 40px; font-size: 1.5rem; font-weight: 900; margin-top: 10px; color: #fbbf24;"></div>
+    </div>
+
+    <!-- ===== SCREEN: LEVEL 2 (Pinyin Factory) ===== -->
+    <div id="s-level-2" class="screen hidden">
+        <div style="text-align: center; margin-bottom: 10px;">
+            <h2 style="font-size: 1.8rem; color: #93c5fd; font-weight: 900; margin-bottom: 8px;">🏭 積木兵工廠</h2>
+            <div class="bubble bob" id="l2-bubble" style="max-width: 300px; margin: 0 auto; margin-top: 15px; font-size: 1.2rem;">組成：爸 (ㄅㄚˋ)</div>
+            <button class="btn-ghost" style="margin-top: 10px; border-color: #fbbf24; color: #fbbf24;" onclick="replayL2Audio()">🔊 聽聲音</button>
+        </div>
+
+        <div class="factory-slots" id="l2-slots">
+            <div class="factory-slot" id="slot-b">聲母</div>
+            <div class="factory-slot" id="slot-i" style="display:none;">介音</div>
+            <div class="factory-slot" id="slot-f">韻母</div>
+        </div>
+
+        <div id="l2-options" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; max-width: 400px; margin-bottom: 20px;">
+            <!-- Options dynamically populated here -->
+        </div>
+
+        <div id="l2-tones" class="tone-btn-grid" style="display: none; max-width: 400px; margin-top: 0;">
+            <div class="tone-btn" style="padding: 10px;" onclick="checkL2Tone(1)"><div class="tone-symbol">￣</div></div>
+            <div class="tone-btn" style="padding: 10px;" onclick="checkL2Tone(2)"><div class="tone-symbol">ˊ</div></div>
+            <div class="tone-btn" style="padding: 10px;" onclick="checkL2Tone(3)"><div class="tone-symbol">ˇ</div></div>
+            <div class="tone-btn" style="padding: 10px;" onclick="checkL2Tone(4)"><div class="tone-symbol">ˋ</div></div>
+            <div class="tone-btn" style="padding: 10px; grid-column: span 2;" onclick="checkL2Tone(5)"><div class="tone-symbol">˙</div><div class="tone-desc" style="font-size: 0.8rem;">輕聲敲一敲</div></div>
+        </div>
+
+        <div id="l2-result" style="height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
+            <!-- Big character reveal here -->
+        </div>
+    </div>
+
+    <!-- ===== SCREEN: LEVEL 3 (Voice Magic) ===== -->
+    <div id="s-level-3" class="screen hidden">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="font-size: 1.8rem; color: #6ee7b7; font-weight: 900; margin-bottom: 8px;">🎙️ 大聲公魔法陣</h2>
+            <div class="bubble bob" id="l3-bubble" style="max-width: 300px; margin: 0 auto; margin-top: 15px;">大聲對著麥克風念出這個字！</div>
+        </div>
+
+        <div class="glass-panel" style="width: 100%; max-width: 400px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 250px;">
+            <div id="l3-char" class="char-reveal" style="font-size: 5rem;">媽</div>
+            <div id="l3-pinyin" class="char-pinyin">ㄇㄚ</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; margin-top: 30px;">
+            <button class="btn" id="btn-record" onclick="startRecording()" style="font-size: 1.5rem; background: linear-gradient(135deg, #10b981, #059669); color: white;">🎤 按一下開口說</button>
+            <button class="btn-ghost" onclick="bypassRecording()" style="opacity: 0.7; font-size: 0.9rem;">平板抓不到聲音？阿布幫我聽！</button>
+        </div>
+        <div id="l3-status" style="margin-top: 15px; font-weight: 800; color: #fbbf24; height: 30px;"></div>
+    </div>
+
+<script>
+// --- 一二年級高頻精華生字庫 (加入地雷音分類) ---
+// b: 聲母, i:介音, f:韻母, t:聲調 (1,2,3,4,5), sym: 地雷音分類標籤
+const VOCAB = [
+    { char: '爸', b:'ㄅ', i:'', f:'ㄚ', t:4, sym: 'basic' },
+    { char: '媽', b:'ㄇ', i:'', f:'ㄚ', t:1, sym: 'basic' },
+    { char: '我', b:'', i:'ㄨ', f:'ㄛ', t:3, sym: 'basic' },
+    { char: '你', b:'ㄋ', i:'', f:'ㄧ', t:3, sym: 'basic' },
+    { char: '好', b:'ㄏ', i:'', f:'ㄠ', t:3, sym: 'basic' },
+    { char: '天', b:'ㄊ', i:'ㄧ', f:'ㄢ', t:1, sym: 'ian' },
+    { char: '地', b:'ㄉ', i:'', f:'ㄧ', t:4, sym: 'basic' },
+    { char: '人', b:'ㄖ', i:'', f:'ㄣ', t:2, sym: 'en' },
+    { char: '上', b:'ㄕ', i:'', f:'ㄤ', t:4, sym: 'ang' },
+    { char: '下', b:'ㄒ', i:'ㄧ', f:'ㄚ', t:4, sym: 'basic' },
+    { char: '花', b:'ㄏ', i:'ㄨ', f:'ㄚ', t:1, sym: 'basic' },
+    { char: '草', b:'ㄘ', i:'', f:'ㄠ', t:3, sym: 'tz' },
+    { char: '狗', b:'ㄍ', i:'', f:'ㄡ', t:3, sym: 'basic' },
+    { char: '貓', b:'ㄇ', i:'', f:'ㄠ', t:1, sym: 'basic' },
+    { char: '鳥', b:'ㄋ', i:'ㄧ', f:'ㄠ', t:3, sym: 'basic' },
+    { char: '魚', b:'', i:'ㄩ', f:'', t:2, sym: 'yu' },
+    { char: '哥', b:'ㄍ', i:'', f:'ㄜ', t:1, sym: 'basic' },
+    { char: '姐', b:'ㄐ', i:'ㄧ', f:'ㄝ', t:3, sym: 'basic' },
+    { char: '弟', b:'ㄉ', i:'', f:'ㄧ', t:4, sym: 'basic' },
+    { char: '妹', b:'ㄇ', i:'', f:'ㄟ', t:4, sym: 'basic' },
+    { char: '頭', b:'ㄊ', i:'', f:'ㄡ', t:2, sym: 'basic' },
+    { char: '手', b:'ㄕ', i:'', f:'ㄡ', t:3, sym: 'sh' },
+    { char: '腳', b:'ㄐ', i:'ㄧ', f:'ㄠ', t:3, sym: 'basic' },
+    { char: '心', b:'ㄒ', i:'', f:'ㄧ', t:1, sym: 'in' },
+    { char: '星', b:'ㄒ', i:'', f:'ㄧ', t:1, sym: 'ing' }, // in vs ing trap
+    { char: '吃', b:'ㄔ', i:'', f:'', t:1, sym: 'ch' },
+    { char: '喝', b:'ㄏ', i:'', f:'ㄜ', t:1, sym: 'basic' },
+    { char: '玩', b:'', i:'ㄨ', f:'ㄢ', t:2, sym: 'wan' },
+    { char: '跑', b:'ㄆ', i:'', f:'ㄠ', t:3, sym: 'basic' },
+    { char: '跳', b:'ㄊ', i:'ㄧ', f:'ㄠ', t:4, sym: 'basic' },
+    { char: '走', b:'ㄗ', i:'', f:'ㄡ', t:3, sym: 'z' },
+    { char: '飛', b:'ㄈ', i:'', f:'ㄟ', t:1, sym: 'basic' },
+    { char: '車', b:'ㄔ', i:'', f:'ㄜ', t:1, sym: 'ch' },
+    { char: '船', b:'ㄔ', i:'ㄨ', f:'ㄢ', t:2, sym: 'an' },
+    { char: '大', b:'ㄉ', i:'', f:'ㄚ', t:4, sym: 'basic' },
+    { char: '小', b:'ㄒ', i:'ㄧ', f:'ㄠ', t:3, sym: 'basic' },
+    { char: '高', b:'ㄍ', i:'', f:'ㄠ', t:1, sym: 'basic' },
+    { char: '低', b:'ㄉ', i:'', f:'ㄧ', t:1, sym: 'basic' },
+    { char: '長', b:'ㄔ', i:'', f:'ㄤ', t:2, sym: 'ang' },
+    { char: '老', b:'ㄌ', i:'', f:'ㄠ', t:3, sym: 'basic' },
+    { char: '師', b:'ㄕ', i:'', f:'', t:1, sym: 'sh' },
+    { char: '書', b:'ㄕ', i:'ㄨ', f:'', t:1, sym: 'sh' },
+    { char: '包', b:'ㄅ', i:'', f:'ㄠ', t:1, sym: 'basic' },
+    { char: '水', b:'ㄕ', i:'ㄨ', f:'ㄟ', t:3, sym: 'sh' },
+    { char: '火', b:'ㄏ', i:'ㄨ', f:'ㄛ', t:3, sym: 'basic' },
+    { char: '山', b:'ㄕ', i:'', f:'ㄢ', t:1, sym: 'an' },
+    { char: '石', b:'ㄕ', i:'', f:'', t:2, sym: 'sh' },
+    // 地雷音對照 (風/分, 朋/盆)
+    { char: '風', b:'ㄈ', i:'', f:'ㄥ', t:1, sym: 'eng' },
+    { char: '分', b:'ㄈ', i:'', f:'ㄣ', t:1, sym: 'en' },
+    { char: '朋', b:'ㄆ', i:'', f:'ㄥ', t:2, sym: 'eng' },
+    { char: '盆', b:'ㄆ', i:'', f:'ㄣ', t:2, sym: 'en' },
+    { char: '幫', b:'ㄅ', i:'', f:'ㄤ', t:1, sym: 'ang' },
+    { char: '班', b:'ㄅ', i:'', f:'ㄢ', t:1, sym: 'an' },
+    { char: '真', b:'ㄓ', i:'', f:'ㄣ', t:1, sym: 'zh' },
+    { char: '曾', b:'ㄗ', i:'', f:'ㄥ', t:1, sym: 'z' },
+    { char: '門', b:'ㄇ', i:'', f:'ㄣ', t:2, sym: 'en' },
+    { char: '夢', b:'ㄇ', i:'', f:'ㄥ', t:4, sym: 'eng' },
+    // 數字
+    { char: '一', b:'', i:'ㄧ', f:'', t:1, sym: 'num' },
+    { char: '二', b:'', i:'', f:'ㄦ', t:4, sym: 'num' },
+    { char: '三', b:'ㄙ', i:'', f:'ㄢ', t:1, sym: 'num' },
+    { char: '四', b:'ㄙ', i:'', f:'', t:4, sym: 'num' }
+];
+
+// 自適應追蹤引擎
+let errorStats = { 'en': 0, 'eng': 0, 'an': 0, 'ang': 0, 'zh': 0, 'z': 0, 'sh': 0, 's': 0, 'ch': 0, 'c': 0 };
+
+const TONE_MARKS = { 1:'￣', 2:'ˊ', 3:'ˇ', 4:'ˋ', 5:'˙' };
+
+// Utility: Synthesis
+function speak(text, rate=1.0) {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-TW'; u.rate = rate;
+    window.speechSynthesis.speak(u);
+}
+function say(text) { speak(text); }
+
+// Global Variables
+let currentWord = null;
+let currentLevel = 0;
+let winCount = 0;
+const WINS_NEEDED = 5;
+
+// Screen Management
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+    document.getElementById('top-nav').style.display = (id === 's-map') ? 'none' : 'flex';
+}
+function returnToMap() { showScreen('s-map'); }
+
+function playWelcome() { say("歡迎來到阿布ㄅㄆㄇ大冒險！選一個島嶼開始吧！"); }
+
+// Getting a word adaptively
+function getWord() {
+    // Find the symbol with the highest error count
+    let maxErrorSym = null;
+    let maxErrors = 0;
+    for (const [sym, errs] of Object.entries(errorStats)) {
+        if (errs > 1 && errs > maxErrors) { maxErrors = errs; maxErrorSym = sym; }
+    }
+    
+    let pool = VOCAB;
+    if (maxErrorSym && Math.random() > 0.4) {
+        // Find opposite/trap words (e.g. if messing up 'en', mix 'eng' and 'en')
+        let targetSyms = [];
+        if (maxErrorSym === 'en' || maxErrorSym === 'eng') targetSyms = ['en', 'eng'];
+        else if (maxErrorSym === 'an' || maxErrorSym === 'ang') targetSyms = ['an', 'ang'];
+        else if (maxErrorSym === 'zh' || maxErrorSym === 'z') targetSyms = ['zh', 'z'];
+        else if (maxErrorSym === 'sh' || maxErrorSym === 's') targetSyms = ['sh', 's'];
+        
+        let trapPool = VOCAB.filter(w => targetSyms.includes(w.sym));
+        if (trapPool.length > 0) pool = trapPool;
+    }
+
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function getZhuyinString(w) {
+    // Combine Bopomofo without tone for display
+    return `${w.b}${w.i}${w.f}`;
+}
+
+// ============== LEVEL 1: Tone Rollercoaster ==============
+function startLevel(lvl) {
+    currentLevel = lvl;
+    winCount = 0;
+    showScreen(`s-level-${lvl}`);
+    prepareLevel();
+}
+
+function prepareLevel() {
+    currentWord = getWord();
+    if (currentLevel === 1) setupL1();
+    if (currentLevel === 2) setupL2();
+    if (currentLevel === 3) setupL3();
+}
+
+function setupL1() {
+    // Stage 1: Tone recognition
+    // We only want words with clear tones 1-4 for this game (no soft tone 5 for simplicity unless it randomly comes up)
+    while(currentWord.t === 5) currentWord = getWord();
+    
+    document.getElementById('l1-zhuyin').textContent = getZhuyinString(currentWord);
+    document.getElementById('l1-bubble').textContent = "聽阿布念！這是第幾聲？";
+    document.getElementById('l1-result').textContent = "";
+    
+    // Play sound (e.g., "爸")
+    setTimeout(replayL1Audio, 500);
+}
+
+function replayL1Audio() {
+    // To make it clear, we read the character. Since we can't easily synthesize raw pinyin with tone cleanly, we synthesize the character itself robustly.
+    const text = `這個字念：${currentWord.char}`;
+    speak(text);
+}
+
+function checkL1Tone(guessIdx) {
+    if (guessIdx === currentWord.t) {
+        document.getElementById('l1-result').textContent = "✅ 答對了！" + (guessIdx===1?"平平飛":guessIdx===2?"向上爬":guessIdx===3?"打個滾":"向下跳");
+        confetti({particleCount: 80, spread: 70, origin: { y: 0.6 }});
+        speak("答對了！");
+        setTimeout(l1Win, 1500);
+    } else {
+        document.getElementById('l1-result').textContent = "❌ 哎呀，再聽一次！";
+        // Record error for specific trap sounds if any
+        if (currentWord.sym) errorStats[currentWord.sym] = (errorStats[currentWord.sym] || 0) + 1;
+        gsap.fromTo('#l1-zhuyin', {x:-10}, {x:10, yoyo:true, repeat:3, duration:0.1});
+        replayL1Audio();
+    }
+}
+
+function l1Win() {
+    winCount++;
+    if (winCount >= WINS_NEEDED) {
+        say("太棒了！你通過了聲調遊樂園！");
+        returnToMap();
+    } else prepareLevel();
+}
+
+
+// ============== LEVEL 2: Pinyin Factory ==============
+let l2Selected = { b: null, i: null, f: null };
+let stepL2 = 'build'; // 'build' or 'tone'
+
+function setupL2() {
+    stepL2 = 'build';
+    l2Selected = { b: null, i: null, f: null };
+    document.getElementById('l2-tones').style.display = 'none';
+    document.getElementById('l2-options').style.display = 'flex';
+    document.getElementById('l2-result').innerHTML = '';
+    
+    // Setup slots
+    document.getElementById('slot-b').textContent = '聲母';
+    document.getElementById('slot-i').textContent = '介音';
+    document.getElementById('slot-f').textContent = '韻母';
+    
+    document.getElementById('slot-b').style.display = currentWord.b ? 'flex' : 'none';
+    document.getElementById('slot-i').style.display = currentWord.i ? 'flex' : 'none';
+    document.getElementById('slot-f').style.display = currentWord.f ? 'flex' : 'none';
+    
+    document.getElementById('slot-b').className = 'factory-slot';
+    document.getElementById('slot-i').className = 'factory-slot';
+    document.getElementById('slot-f').className = 'factory-slot';
+    
+    const parts = [];
+    if (currentWord.b) parts.push({val: currentWord.b, t: 'b'});
+    if (currentWord.i) parts.push({val: currentWord.i, t: 'i'});
+    if (currentWord.f) parts.push({val: currentWord.f, t: 'f'});
+    
+    // Add distractors
+    const allB = ['ㄅ','ㄆ','ㄇ','ㄉ','ㄊ','ㄌ','ㄍ','ㄒ','ㄓ','ㄔ','ㄕ','ㄗ','ㄘ','ㄙ'];
+    const allI = ['ㄧ','ㄨ','ㄩ'];
+    const allF = ['ㄚ','ㄛ','ㄜ','ㄝ','ㄞ','ㄠ','ㄡ','ㄢ','ㄣ','ㄤ','ㄥ'];
+    
+    while(parts.length < 6) { // Pick 6 total blocks
+        let r = Math.random();
+        if (r < 0.33 && currentWord.b) parts.push({val: allB[Math.floor(Math.random()*allB.length)], t:'b'});
+        else if (r < 0.66 && currentWord.f) parts.push({val: allF[Math.floor(Math.random()*allF.length)], t:'f'});
+        else if (currentWord.i) parts.push({val: allI[Math.floor(Math.random()*allI.length)], t:'i'});
+        else parts.push({val: allB[Math.floor(Math.random()*allB.length)], t:'b'});
+    }
+    
+    // Shuffle and render
+    parts.sort(() => Math.random() - 0.5);
+    const optsDiv = document.getElementById('l2-options');
+    optsDiv.innerHTML = '';
+    
+    parts.forEach(p => {
+        let el = document.createElement('div');
+        el.className = 'bopomofo-block';
+        el.textContent = p.val;
+        el.onclick = () => selectL2Part(el, p);
+        optsDiv.appendChild(el);
+    });
+
+    const tip = `我們來拼出：${currentWord.char}`;
+    document.getElementById('l2-bubble').textContent = tip;
+    speak(tip);
+}
+
+function replayL2Audio() { speak(currentWord.char); }
+
+function selectL2Part(el, p) {
+    if (stepL2 !== 'build') return;
+    
+    let slot = null;
+    if (p.val === currentWord.b && !l2Selected.b) { slot = 'slot-b'; l2Selected.b = p.val; }
+    else if (p.val === currentWord.i && !l2Selected.i) { slot = 'slot-i'; l2Selected.i = p.val; }
+    else if (p.val === currentWord.f && !l2Selected.f) { slot = 'slot-f'; l2Selected.f = p.val; }
+    else {
+        // Wrong piece or already filled
+        el.style.backgroundColor = '#ef4444';
+        setTimeout(() => el.style.backgroundColor = '', 500);
+        speak("不對喔！");
+        if (currentWord.sym) errorStats[currentWord.sym] = (errorStats[currentWord.sym] || 0) + 1;
+        return;
+    }
+    
+    speak(p.val);
+    el.style.display = 'none'; // hide from choices
+    document.getElementById(slot).textContent = p.val;
+    document.getElementById(slot).style.borderColor = '#fbbf24';
+    document.getElementById(slot).style.backgroundColor = 'rgba(251,191,36,0.2)';
+    
+    // Check if fully built
+    if ((!currentWord.b || l2Selected.b) && (!currentWord.i || l2Selected.i) && (!currentWord.f || l2Selected.f)) {
+        setTimeout(promptL2Tone, 500);
+    }
+}
+
+function promptL2Tone() {
+    stepL2 = 'tone';
+    document.getElementById('l2-options').style.display = 'none';
+    document.getElementById('l2-tones').style.display = 'grid';
+    document.getElementById('l2-bubble').textContent = "最後一步：它是哪一個聲調？";
+    speak("最後一步：它是哪一個聲調？");
+}
+
+function checkL2Tone(t) {
+    if (t === currentWord.t) {
+        document.getElementById('l2-tones').style.display = 'none';
+        let mark = TONE_MARKS[t]; if (t===1) mark = ''; // 1st tone usually hides mark in display with char
+        
+        let py = `${currentWord.b}${currentWord.i}${currentWord.f}${mark}`;
+        document.getElementById('l2-result').innerHTML = `
+            <div style="font-size: 1.5rem; color: #fbbf24;">${py}</div>
+            <div class="char-reveal" style="font-size: 6rem; line-height: 1;">${currentWord.char}</div>
+        `;
+        gsap.fromTo('.char-reveal', {scale: 0.5, opacity:0}, {scale: 1, opacity:1, duration:0.5, ease:'elastic.out(1,0.5)'});
+        confetti({particleCount: 100, spread: 80, origin: { y: 0.6 }});
+        speak(`答對了！${currentWord.char}`);
+        setTimeout(l2Win, 2000);
+    } else {
+        speak("聲調不對喔！");
+        // Shake
+        gsap.fromTo('#l2-tones', {x:-10}, {x:10, yoyo:true, repeat:3, duration:0.1});
+    }
+}
+
+function l2Win() {
+    winCount++;
+    if (winCount >= WINS_NEEDED) {
+        say("太厲害了！你完成了所有積木！");
+        returnToMap();
+    } else prepareLevel();
+}
+
+// ============== LEVEL 3: Voice Magic ==============
+function setupL3() {
+    // Only choose words that are easy to pronounce isolated
+    document.getElementById('l3-char').textContent = currentWord.char;
+    let mark = TONE_MARKS[currentWord.t]; if (currentWord.t===1) mark = '';
+    document.getElementById('l3-pinyin').textContent = `${currentWord.b}${currentWord.i}${currentWord.f}${mark}`;
+    document.getElementById('l3-bubble').textContent = "大聲念出這個字！";
+    document.getElementById('l3-status').textContent = "";
+    document.getElementById('btn-record').textContent = "🎤 按一下開口說";
+    document.getElementById('btn-record').disabled = false;
+}
+
+let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.lang = 'zh-TW';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+}
+
+function startRecording() {
+    if (!recognition) {
+        bypassRecording(); // fallback if not supported
+        return;
+    }
+    document.getElementById('l3-status').textContent = "正在聽... (請說話)";
+    document.getElementById('btn-record').textContent = "👂 聆聽中...";
+    document.getElementById('btn-record').disabled = true;
+    
+    recognition.start();
+    
+    recognition.onresult = function(event) {
+        let transcript = event.results[0][0].transcript.trim();
+        console.log("Heard:", transcript);
+        // Clean up punctuation
+        transcript = transcript.replace(/[。，！？]/g, '');
+        
+        if (transcript.includes(currentWord.char)) {
+            successVoice();
+        } else {
+            document.getElementById('l3-status').textContent = `聽到：「${transcript}」，不太對喔！`;
+            speak("阿布聽得不太清楚，再試一次！");
+            document.getElementById('btn-record').textContent = "🎤 再試一次";
+            document.getElementById('btn-record').disabled = false;
+            if (currentWord.sym) errorStats[currentWord.sym] = (errorStats[currentWord.sym] || 0) + 1;
+        }
+    };
+    
+    recognition.onerror = function(event) {
+        console.error("Speech error", event.error);
+        if (event.error === 'not-allowed') {
+            document.getElementById('l3-status').textContent = "麥克風沒開啟！請點備份按鈕！";
+        } else {
+            document.getElementById('l3-status').textContent = "阿布沒聽到聲音喔！";
+        }
+        document.getElementById('btn-record').textContent = "🎤 重新開始";
+        document.getElementById('btn-record').disabled = false;
+    };
+    
+    recognition.onend = function() {
+        if(document.getElementById('btn-record').disabled) {
+           document.getElementById('btn-record').textContent = "🎤 重新點擊發言";
+           document.getElementById('btn-record').disabled = false;
+        }
+    };
+}
+
+function bypassRecording() {
+    document.getElementById('l3-status').textContent = "阿布聽到你心裡的聲音了！✨";
+    successVoice();
+}
+
+function successVoice() {
+    document.getElementById('btn-record').disabled = true;
+    document.getElementById('l3-status').textContent = "✅ 大聲公魔法成功！";
+    confetti({particleCount: 150, spread: 100, origin: { y: 0.6 }});
+    speak(`答對了！就是 ${currentWord.char}！`);
+    
+    // Animate character
+    gsap.to('.char-reveal', {rotationY: 360, duration: 1, ease: 'power2.inOut'});
+    
+    setTimeout(() => {
+        gsap.set('.char-reveal', {rotationY: 0});
+        winCount++;
+        if (winCount >= WINS_NEEDED) {
+            say("太厲害了！你完全掌握了大聲公魔法！");
+            returnToMap();
+        } else prepareLevel();
+    }, 2500);
+}
+
+// Init
+window.onload = () => showScreen('s-map');
+
+</script>
+</body>
+</html>
