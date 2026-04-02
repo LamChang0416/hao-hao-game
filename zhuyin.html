@@ -271,8 +271,8 @@ const VOCAB = [
     { char: '頭', b:'ㄊ', i:'', f:'ㄡ', t:2, sym: 'basic' },
     { char: '手', b:'ㄕ', i:'', f:'ㄡ', t:3, sym: 'sh' },
     { char: '腳', b:'ㄐ', i:'ㄧ', f:'ㄠ', t:3, sym: 'basic' },
-    { char: '心', b:'ㄒ', i:'', f:'ㄧ', t:1, sym: 'in' },
-    { char: '星', b:'ㄒ', i:'', f:'ㄧ', t:1, sym: 'ing' }, // in vs ing trap
+    { char: '心', b:'ㄒ', i:'ㄧ', f:'ㄣ', t:1, sym: 'in' },
+    { char: '星', b:'ㄒ', i:'ㄧ', f:'ㄥ', t:1, sym: 'ing' }, // in vs ing trap
     { char: '吃', b:'ㄔ', i:'', f:'', t:1, sym: 'ch' },
     { char: '喝', b:'ㄏ', i:'', f:'ㄜ', t:1, sym: 'basic' },
     { char: '玩', b:'', i:'ㄨ', f:'ㄢ', t:2, sym: 'wan' },
@@ -310,7 +310,15 @@ const VOCAB = [
     { char: '一', b:'', i:'ㄧ', f:'', t:1, sym: 'num' },
     { char: '二', b:'', i:'', f:'ㄦ', t:4, sym: 'num' },
     { char: '三', b:'ㄙ', i:'', f:'ㄢ', t:1, sym: 'num' },
-    { char: '四', b:'ㄙ', i:'', f:'', t:4, sym: 'num' }
+    { char: '四', b:'ㄙ', i:'', f:'', t:4, sym: 'num' },
+    // 擴充：一二年級優化生字 (氣候與自然)
+    { char: '樹', b:'ㄕ', i:'ㄨ', f:'', t:4, sym: 'sh' },
+    { char: '春', b:'ㄔ', i:'ㄨ', f:'ㄣ', t:1, sym: 'ch' },
+    { char: '秋', b:'ㄑ', i:'ㄧ', f:'ㄡ', t:1, sym: 'basic' },
+    { char: '雲', b:'', i:'ㄩ', f:'ㄣ', t:2, sym: 'yu' },
+    { char: '亮', b:'ㄌ', i:'ㄧ', f:'ㄤ', t:4, sym: 'ang' },
+    { char: '寫', b:'ㄒ', i:'ㄧ', f:'ㄝ', t:3, sym: 'basic' },
+    { char: '字', b:'ㄗ', i:'', f:'', t:4, sym: 'z' }
 ];
 
 // 自適應追蹤引擎
