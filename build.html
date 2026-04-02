@@ -643,15 +643,15 @@ function playTock() {
 }
 
 // --- Continuous Progress Check Loop ---
-function loop() {
-    checkProgress();
-    requestAnimationFrame(loop);
-}
+// Throttle to avoid iPad battery drain and physics engine stutter
+setInterval(() => {
+    if (document.getElementById('game-layout').style.display !== 'none') {
+        checkProgress();
+    }
+}, 500);
 
 window.addEventListener('resize', () => { location.reload(); });
 </script>
 
-<!-- Kick off the progress loop after page loads -->
-<script>window.addEventListener('load', () => requestAnimationFrame(loop));</script>
 </body>
 </html>
