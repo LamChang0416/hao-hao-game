@@ -178,7 +178,7 @@
 <body class="flex flex-col items-center justify-center">
 
 <!-- PWA Home Button Injected -->
-<a href="index.html" style="position: fixed; top: 20px; left: 20px; z-index: 99999; background: rgba(15, 23, 42, 0.7); color: white; padding: 12px 24px; border-radius: 9999px; font-size: 20px; text-decoration: none; font-weight: 900; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px; font-family: 'Nunito', 'Noto Sans TC', sans-serif; transition: transform 0.2s;" oncontextmenu="return false;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.95)'" ontouchend="this.style.transform='scale(1)'">
+<a href="index.html" style="position: fixed; bottom: 20px; right: 20px; z-index: 99999; background: rgba(15, 23, 42, 0.4); color: white; padding: 12px 24px; border-radius: 9999px; font-size: 20px; text-decoration: none; font-weight: 900; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px; font-family: 'Nunito', 'Noto Sans TC', sans-serif; transition: transform 0.2s;" oncontextmenu="return false;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.95)'" ontouchend="this.style.transform='scale(1)'">
   <span style="font-size: 28px; line-height: 1;">🏠</span> 回大世界
 </a>
 
@@ -220,7 +220,7 @@
 
             <div
                 class="absolute -top-8 bg-blue-600 text-white px-8 py-2 rounded-full text-3xl font-black border-4 border-blue-300 shadow-lg">
-                <span id="eq-num1">0</span> + <span id="eq-target" class="text-yellow-300">?</span> = 10
+                <span id="eq-num1">0</span> + <span id="eq-target" class="text-yellow-300">?</span> = 15
             </div>
 
             <div id="furnace-grid" class="grid grid-cols-5 gap-4">
@@ -273,7 +273,7 @@
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('abu-sprite').innerText = "👨‍🚀";
 
-            abuSpeak("太空船啟動！澔澔，看圖上有幾顆紅礦石，幫我湊成十顆吧！");
+            abuSpeak("太空船升級囉！這次我們需要把紅礦石湊成十五顆，小心加太多會爆炸喔！");
             setTimeout(nextLevel, 3500);
         }
 
@@ -292,16 +292,16 @@
             document.getElementById('eq-target').classList.remove('text-green-400');
             document.getElementById('eq-target').classList.add('text-yellow-300');
 
-            // 產生題目 (X + Y = 10)
+            // 產生題目 (X + Y = 15)
             state.currentStones = Math.floor(Math.random() * 9) + 1; // 1~9
-            state.targetNeed = 10 - state.currentStones;
+            state.targetNeed = 15 - state.currentStones;
             document.getElementById('eq-num1').innerText = state.currentStones;
 
             renderFurnace(state.currentStones);
             generateOptions(state.targetNeed);
 
             if (state.level > 1) {
-                abuSpeak("還需要幾顆才能煉出藍水晶呢？");
+                abuSpeak("還需要加幾顆，才會變成 15 顆呢？小心加太多會爆炸喔！");
             }
         }
 
@@ -309,7 +309,7 @@
             const grid = document.getElementById('furnace-grid');
             grid.innerHTML = '';
 
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 15; i++) {
                 const slot = document.createElement('div');
                 slot.className = "w-[60px] h-[60px] rounded-full border-4 border-slate-600 bg-slate-700/50 flex items-center justify-center shadow-inner";
 
@@ -389,18 +389,30 @@
                 }, 1000); // 讓玩家先看清楚補滿10顆的樣子
 
             } else {
-                // 答錯溫柔引導
-                document.getElementById('abu-sprite').innerText = "🤔";
-                abuSpeak(`差一點點！${choice} 放進去好像不會剛好滿喔，我們再看一次空格有幾個！`);
-
-                // 按鈕輕微抖動視覺提示
-                btnElement.classList.add('shake-gentle');
-                btnElement.classList.replace('bg-white', 'bg-orange-100');
-                setTimeout(() => {
-                    btnElement.classList.remove('shake-gentle');
-                    btnElement.classList.replace('bg-orange-100', 'bg-white');
-                    document.getElementById('abu-sprite').innerText = "👨‍🚀";
-                }, 500);
+                if (choice > state.targetNeed) {
+                    document.getElementById('abu-sprite').innerText = "🐦‍⬛";
+                    abuSpeak(`磅！太多了爆炸了！${choice} 顆放不進去啦！`);
+                    confetti({ particleCount: 60, spread: 100, origin: { y: 0.6 }, colors: ['#000000', '#555555', '#EF4444'] });
+                    btnElement.classList.add('shake-gentle');
+                    btnElement.classList.replace('bg-white', 'bg-red-500');
+                    btnElement.classList.replace('text-blue-900', 'text-white');
+                    setTimeout(() => {
+                        btnElement.classList.remove('shake-gentle');
+                        btnElement.classList.replace('bg-red-500', 'bg-white');
+                        btnElement.classList.replace('text-white', 'text-blue-900');
+                        document.getElementById('abu-sprite').innerText = "👨‍🚀";
+                    }, 2000);
+                } else {
+                    document.getElementById('abu-sprite').innerText = "🤔";
+                    abuSpeak(`還不夠滿喔！${choice} 放進去還有空位，再找找看！`);
+                    btnElement.classList.add('shake-gentle');
+                    btnElement.classList.replace('bg-white', 'bg-orange-100');
+                    setTimeout(() => {
+                        btnElement.classList.remove('shake-gentle');
+                        btnElement.classList.replace('bg-orange-100', 'bg-white');
+                        document.getElementById('abu-sprite').innerText = "👨‍🚀";
+                    }, 500);
+                }
             }
         }
 
