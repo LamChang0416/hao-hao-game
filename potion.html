@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>阿布魔法實驗室 🧪</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- GSAP & Confetti -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&family=Noto+Sans+TC:wght@800;900&display=swap');
+        
+        body, html {
+            margin: 0; padding: 0; width: 100vw; min-height: 100vh;
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            color: white; overflow: hidden; user-select: none; -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .screen {
+            position: fixed; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .hidden { display: none !important; }
+
+        /* Flask Styles */
+        .flask {
+            position: relative;
+            width: 160px;
+            height: 400px;
+            border: 4px solid rgba(255, 255, 255, 0.4);
+            border-top: none;
+            border-radius: 0 0 40px 40px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5), inset 0 -10px 20px rgba(255,255,255,0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+            z-index: 10;
+        }
+        
+        /* The magical glowing liquid */
+        .liquid {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 0%; /* Dynamic */
+            background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+            box-shadow: 0 -5px 20px rgba(59, 130, 246, 0.6);
+            transition: height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border-radius: 0 0 35px 35px;
+        }
+        .liquid::after {
+            content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shine 3s infinite linear;
+        }
+
+        /* Tick Marks Container */
+        .ticks-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            justify-content: space-between;
+            pointer-events: none;
+            transition: opacity 1s;
+        }
+        .tick {
+            width: 100%; border-top: 2px dashed rgba(255,255,255,0.3);
+            flex: 1; /* evenly spacing 10 chunks */
+        }
+        
+        /* The Target Glowing Line */
+        .target-line {
+            position: absolute;
+            bottom: 50%; /* Dynamic */
+            left: -10px; width: calc(100% + 20px);
+            border-top: 4px dashed #4ade80;
+            box-shadow: 0 0 15px #4ade80;
+            z-index: 20;
+            transition: bottom 0.5s;
+        }
+        .target-label {
+            position: absolute; right: -40px; top: -14px;
+            background: #22c55e; color: white; font-weight: 900; font-size: 1.2rem;
+            padding: 2px 10px; border-radius: 99px;
+            box-shadow: 0 4px 10px rgba(34, 197, 94, 0.4);
+        }
+
+        /* Options area */
+        .options-grid {
+            display: flex; gap: 20px; justify-content: center; width: 100%; max-width: 500px;
+        }
+        .vial-btn {
+            background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 20px; padding: 15px; width: 100px;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+            cursor: pointer; cursor: pointer; position: relative; overflow: hidden;
+            transition: transform 0.2s, background 0.2s;
+            height: 120px;
+        }
+        .vial-btn:active { transform: scale(0.9); }
+        .vial-btn-liquid {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: #f59e0b; opacity: 0.8; z-index: -1;
+        }
+        
+        .number-display {
+            font-size: 2.5rem; font-weight: 900; z-index: 5; text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        
+        .pump-btn {
+            background: rgba(0,0,0,0.3); border: 2px solid #f43f5e;
+            border-radius: 20px; padding: 15px; width: 100px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; position: relative; overflow: hidden;
+            transition: transform 0.2s, background 0.2s;
+            height: 120px;
+            color: #fca5a5;
+        }
+        .pump-btn:active { transform: scale(0.9); background: rgba(244, 63, 94, 0.2); }
+        .pump-icon { font-size: 2.5rem; margin-bottom: -10px; }
+
+        /* Progress Dots */
+        .progress-bar { display: flex; gap: 10px; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); }
+        .dot { width: 15px; height: 15px; border-radius: 50%; background: rgba(255,255,255,0.2); }
+        .dot.active { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; }
+        
+        /* Math Formula Reveal */
+        .math-reveal {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            font-size: 4rem; font-weight: 900; color: #fbbf24; text-shadow: 0 5px 25px rgba(0,0,0,0.8);
+            z-index: 50; background: rgba(0,0,0,0.5); padding: 10px 40px; border-radius: 30px;
+            white-space: nowrap; pointer-events: none;
+        }
+        
+        /* Abu Guide */
+        .abu-guide {
+            position: absolute; bottom: 20px; left: 20px;
+            background: white; color: #1e1b4b; padding: 12px 24px; border-radius: 24px;
+            font-weight: 900; font-size: 1.2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 250px; text-align: center; line-height: 1.4;
+        }
+        
+        .btn-home {
+            position: absolute; top: 20px; left: 20px; font-size: 2rem; cursor: pointer;
+            filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); transition: transform 0.2s;
+        }
+        .btn-home:active { transform: scale(0.9); }
+
+        @keyframes shine {
+            0% { left: -100%; } 100% { left: 100%; }
+        }
+        
+        @keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
+        .floating { animation: float 3s ease-in-out infinite; }
+    </style>
+</head>
+<body>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="screen">
+        <h1 class="text-5xl md:text-6xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-6 drop-shadow-lg">阿布魔法實驗室 🧪</h1>
+        <p class="text-xl font-bold text-indigo-200 mb-10 text-center max-w-md">利用加法倒入藥水、利用減法抽走藥水，讓水位符合目標吧！</p>
+        <button onclick="startGame()" class="bg-gradient-to-b from-purple-500 to-indigo-600 text-white font-black text-3xl py-4 flex items-center justify-center gap-2 rounded-full w-64 shadow-[0_6px_0_#3730a3] active:translate-y-1 active:shadow-[0_2px_0_#3730a3] transition-all">
+            開始調配 ⚡
+        </button>
+        <div class="btn-home" onclick="window.location.href='./index.html'">🏠</div>
+    </div>
+
+    <!-- Gameplay Screen -->
+    <div id="game-screen" class="screen hidden">
+        <div class="btn-home" onclick="window.location.href='./index.html'">🏠</div>
+        <div class="progress-bar" id="progress-bar">
+            <!-- Render 8 dots -->
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+
+        <!-- The Flask -->
+        <div class="flask floating" id="main-flask">
+            <div class="ticks-container" id="flask-ticks">
+                <!-- 10 segments = 10 lines -->
+                <div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div>
+                <div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div>
+            </div>
+            <div class="liquid" id="flask-liquid"></div>
+            <div class="target-line" id="target-line">
+                <div class="target-label" id="target-label">8</div>
+            </div>
+        </div>
+
+        <div class="math-reveal" id="math-reveal">3 + 5 = 8</div>
+
+        <!-- Options Container -->
+        <div class="options-grid" id="options-container">
+            <!-- dynamically injected -->
+        </div>
+
+        <div class="abu-guide" id="abu-dialog">來幫我調配魔藥吧！</div>
+    </div>
+
+    <!-- Win Screen -->
+    <div id="win-screen" class="screen hidden">
+        <h1 class="text-6xl font-black text-yellow-400 mb-6 drop-shadow-[0_5px_15px_rgba(250,204,21,0.5)]">太厲害了！🌟</h1>
+        <p class="text-2xl font-bold text-white mb-10 text-center">你就是數學魔法大師！阿布的實驗非常成功！</p>
+        <div style="font-size: 8rem; margin-bottom: 2rem;">🧙‍♂️🎆</div>
+        <button onclick="startGame()" class="bg-gradient-to-b from-yellow-400 to-orange-500 text-white font-black text-3xl py-4 rounded-full w-64 shadow-[0_6px_0_#9a3412] active:translate-y-1 active:shadow-[0_2px_0_#9a3412] transition-all">
+            再玩一次 🔄
+        </button>
+        <button onclick="window.location.href='./index.html'" class="mt-4 opacity-70 font-bold text-xl drop-shadow">回遊樂園</button>
+    </div>
+
+    <script>
+        // Constants & State
+        const TOTAL_ROUNDS = 8;
+        const FLASK_CAPACITY = 10;
+        let currentRound = 0;
+        let isAddition = true;
+        let startVal = 0, targetVal = 0, answerVal = 0;
+        
+        // Setup Progress Bar
+        const dots = document.querySelectorAll('.dot');
+        
+        // Voice Synth helper
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'zh-TW'; msg.rate = 1.0;
+            window.speechSynthesis.speak(msg);
+        }
+
+        // DOM elements
+        const sStart = document.getElementById('start-screen');
+        const sGame = document.getElementById('game-screen');
+        const sWin = document.getElementById('win-screen');
+        const fLiquid = document.getElementById('flask-liquid');
+        const tLine = document.getElementById('target-line');
+        const tLabel = document.getElementById('target-label');
+        const optContainer = document.getElementById('options-container');
+        const abuDialog = document.getElementById('abu-dialog');
+        const mathReveal = document.getElementById('math-reveal');
+        const fTicks = document.getElementById('flask-ticks');
+
+        function switchScreen(screen) {
+            [sStart, sGame, sWin].forEach(s => s.classList.add('hidden'));
+            screen.classList.remove('hidden');
+        }
+
+        function startGame() {
+            currentRound = 0;
+            dots.forEach(d => d.classList.remove('active'));
+            switchScreen(sGame);
+            nextRound();
+            speak('開始調配魔藥囉，注意目標的刻度線！');
+        }
+
+        function nextRound() {
+            if(currentRound >= TOTAL_ROUNDS) {
+                switchScreen(sWin);
+                speak('太厲害了，你成為了數學魔法大師！');
+                confetti({particleCount: 200, spread: 100, origin: { y: 0.6 }});
+                return;
+            }
+            
+            // Fading Effect: If current round is >= 3 (4th round), fade out tick marks
+            if (currentRound >= 3) {
+                fTicks.style.opacity = '0.2';
+            } else {
+                fTicks.style.opacity = '0.8';
+            }
+
+            // Alternating Addition and Subtraction
+            isAddition = (currentRound % 2 === 0);
+            generateProblem();
+            renderUI();
+        }
+
+        function generateProblem() {
+            if(isAddition) {
+                // targetVal: 4 ~ 10
+                targetVal = Math.floor(Math.random() * 7) + 4;
+                // startVal: 1 ~ targetVal-1
+                startVal = Math.floor(Math.random() * (targetVal - 1)) + 1;
+                answerVal = targetVal - startVal;
+            } else {
+                // startVal: 5 ~ 10
+                startVal = Math.floor(Math.random() * 6) + 5;
+                // targetVal: 1 ~ startVal-1
+                targetVal = Math.floor(Math.random() * (startVal - 1)) + 1;
+                answerVal = startVal - targetVal;
+            }
+        }
+
+        function renderUI() {
+            // Setup flask
+            fLiquid.style.background = isAddition ? 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)' : 'linear-gradient(180deg, #f43f5e 0%, #e11d48 100%)';
+            fLiquid.style.boxShadow = isAddition ? '0 -5px 20px rgba(59, 130, 246, 0.6)' : '0 -5px 20px rgba(244, 63, 94, 0.6)';
+            
+            // Set liquid instantly initially
+            gsap.set(fLiquid, { height: `${(startVal / FLASK_CAPACITY) * 100}%` });
+            
+            // Set target line
+            tLine.style.bottom = `${(targetVal / FLASK_CAPACITY) * 100}%`;
+            tLabel.innerText = targetVal;
+            
+            // Reset Math Reveal
+            gsap.set(mathReveal, { scale: 0, opacity: 0 });
+
+            // Generate options (3 choices)
+            let choices = [answerVal];
+            while(choices.length < 3) {
+                // Pick a wrong answer that is valid (1 to 9, not answerVal, not causing <0 or >10 if applied)
+                let c = Math.floor(Math.random() * 9) + 1;
+                if(c !== answerVal && !choices.includes(c)) {
+                    // Check bounds for logic consistency (optional, but good for visual realism)
+                    if(isAddition && startVal + c > 10) continue;
+                    if(!isAddition && startVal - c < 0) continue;
+                    choices.push(c);
+                }
+            }
+            // Shuffle
+            choices.sort(() => Math.random() - 0.5);
+
+            optContainer.innerHTML = '';
+            
+            choices.forEach(c => {
+                let btn = document.createElement('div');
+                if(isAddition) {
+                    btn.className = 'vial-btn';
+                    btn.innerHTML = `
+                        <div class="vial-btn-liquid" style="height: ${c * 10}%"></div>
+                        <div class="number-display">＋${c}</div>
+                    `;
+                } else {
+                    btn.className = 'pump-btn';
+                    btn.innerHTML = `
+                        <div class="pump-icon">⬇️</div>
+                        <div class="number-display">－${c}</div>
+                    `;
+                }
+                btn.onclick = () => handleChoice(c, btn);
+                optContainer.appendChild(btn);
+            });
+
+            // Set Abu text
+            if(isAddition) {
+                abuDialog.innerText = `現在有 ${startVal} 單位的藥水，要加入多少才能到達 ${targetVal} 呢？`;
+            } else {
+                abuDialog.innerText = `現在太滿了有 ${startVal} 單位，要抽走多少才能降到 ${targetVal} 呢？`;
+            }
+        }
+
+        function handleChoice(num, btnElement) {
+            // Disable clicks during animation
+            optContainer.style.pointerEvents = 'none';
+
+            if(num === answerVal) {
+                // Correct!
+                speak('答對了！魔法調配成功！');
+                confetti({particleCount: 50, spread: 60, origin: { y: 0.7 }});
+                dots[currentRound].classList.add('active');
+                
+                // Animate liquid
+                let finalH = `${(targetVal / FLASK_CAPACITY) * 100}%`;
+                gsap.to(fLiquid, { height: finalH, duration: 1, ease: "bounce.out" });
+                
+                // Fading target line temporarily to show success
+                gsap.to(tLine, { opacity: 0, duration: 0.5, yoyo: true, repeat: 3 });
+
+                // Show mathematical formula
+                mathReveal.innerText = isAddition ? `${startVal} + ${num} = ${targetVal}` : `${startVal} - ${num} = ${targetVal}`;
+                gsap.to(mathReveal, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.7)", delay: 0.5 });
+                
+                setTimeout(() => {
+                    currentRound++;
+                    optContainer.style.pointerEvents = 'auto';
+                    nextRound();
+                }, 3000);
+
+            } else {
+                // Wrong!
+                speak('哎呀！刻度不對喔，再試一次！');
+                gsap.to(btnElement, { x: -10, yoyo: true, repeat: 3, duration: 0.1 });
+                
+                // Visual feedback of incorrect level
+                let wrongVal = isAddition ? startVal + num : startVal - num;
+                let finalH = `${(wrongVal / FLASK_CAPACITY) * 100}%`;
+                // Snap up then snap back
+                gsap.to(fLiquid, { height: finalH, duration: 0.3, onComplete: () => {
+                    gsap.to(fLiquid, { height: `${(startVal / FLASK_CAPACITY) * 100}%`, delay: 0.5, duration: 0.5 });
+                    optContainer.style.pointerEvents = 'auto';
+                }});
+            }
+        }
+
+    </script>
+</body>
+</html>
