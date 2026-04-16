@@ -138,14 +138,14 @@
         
         /* Abu Guide */
         .abu-guide {
-            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
             background: white; color: #1e1b4b; padding: 15px 30px; border-radius: 99px;
             font-weight: 900; font-size: 1.4rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
             width: 90%; max-width: 500px; text-align: center; line-height: 1.4;
             cursor: pointer; z-index: 40; border: 4px solid #fbbf24;
             transition: transform 0.1s;
+            margin-top: 30px; margin-bottom: 20px;
         }
-        .abu-guide:active { transform: translateX(-50%) scale(0.95); }
+        .abu-guide:active { transform: scale(0.95); }
         
         .btn-home {
             position: absolute; top: 20px; left: 20px; font-size: 2rem; cursor: pointer;
@@ -182,6 +182,8 @@
             <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
         </div>
 
+        <div class="abu-guide" id="abu-dialog" onclick="speak(this.innerText.replace('🔊 ', ''))">🔊 點我聽題目！</div>
+
         <!-- The Flask -->
         <div class="flask floating" id="main-flask">
             <div class="ticks-container" id="flask-ticks">
@@ -201,8 +203,6 @@
         <div class="options-grid" id="options-container">
             <!-- dynamically injected -->
         </div>
-
-        <div class="abu-guide" id="abu-dialog" onclick="speak(this.innerText.replace('🔊 ', ''))">🔊 點我聽題目！</div>
     </div>
 
     <!-- Win Screen -->
