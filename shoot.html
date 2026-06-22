@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>阿布太空巡邏隊 🚀 (重力神射手)</title>
+    <title>阿布太空巡邏隊 🚀 (數列小神射手)</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -59,12 +59,13 @@
         }
 
         .glass-panel {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 24px;
             pointer-events: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
         /* Slingshot Visuals */
@@ -73,8 +74,8 @@
             bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
-            width: 120px;
-            height: 120px;
+            width: 140px;
+            height: 140px;
             pointer-events: auto;
             cursor: pointer;
         }
@@ -95,13 +96,13 @@
         .chat-bubble {
             background: white;
             border-radius: 18px;
-            padding: 8px 12px;
-            font-size: 0.9rem;
+            padding: 10px 14px;
+            font-size: 1rem;
             font-weight: 800;
             color: #1e293b;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             position: relative;
-            max-width: 200px;
+            max-width: 250px;
         }
 
         .chat-bubble::after {
@@ -121,45 +122,67 @@
             width: 100%;
             height: 100%;
             background:
-                radial-gradient(circle at 20% 30%, rgba(76, 29, 149, 0.4) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(30, 58, 138, 0.4) 0%, transparent 50%);
+                radial-gradient(circle at 20% 30%, rgba(76, 29, 149, 0.5) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(30, 58, 138, 0.5) 0%, transparent 50%);
             z-index: 0;
-            filter: blur(40px);
+            filter: blur(30px);
         }
 
-        /* Target Pulsing Effect */
-        .target-active {
+        /* Pattern Display */
+        #pattern-display {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+        }
+        .pattern-box {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid #60a5fa;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: white;
+            box-shadow: inset 0 0 10px rgba(96, 165, 250, 0.5);
+        }
+        .pattern-box.missing {
+            background: rgba(251, 191, 36, 0.2);
+            border-color: #fbbf24;
+            color: #fbbf24;
             animation: pulse-gold 1.5s infinite;
         }
 
         @keyframes pulse-gold {
-            0% {
-                filter: drop-shadow(0 0 5px #fbbf24);
-            }
-
-            50% {
-                filter: drop-shadow(0 0 20px #fbbf24);
-            }
-
-            100% {
-                filter: drop-shadow(0 0 5px #fbbf24);
-            }
+            0% { box-shadow: 0 0 5px #fbbf24; }
+            50% { box-shadow: 0 0 20px #fbbf24; }
+            100% { box-shadow: 0 0 5px #fbbf24; }
         }
 
         #start-screen {
-            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            background: radial-gradient(circle at center, #312e81 0%, #0f172a 100%);
             z-index: 100;
         }
 
         .btn-action {
-            background: linear-gradient(to bottom, #4ade80, #22c55e);
-            box-shadow: 0 6px 0 0 #14532d;
+            background: linear-gradient(to bottom, #f43f5e, #e11d48);
+            box-shadow: 0 8px 0 0 #9f1239, 0 15px 30px rgba(225, 29, 72, 0.4);
             transition: all 0.1s;
         }
 
         .btn-action:active {
-            transform: translateY(4px);
-            box-shadow: 0 2px 0 0 #14532d;
+            transform: translateY(6px);
+            box-shadow: 0 2px 0 0 #9f1239, 0 5px 15px rgba(225, 29, 72, 0.3);
+        }
+
+        /* Slingshot Band */
+        #sling-band-left, #sling-band-right {
+            stroke: #fbbf24;
+            stroke-width: 6;
+            stroke-linecap: round;
         }
     </style>
 
@@ -169,68 +192,65 @@
     <link rel="apple-touch-icon" href="icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <script>
-      // Automatically register SW
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').catch(()=>{});
-        });
-      }
-    </script>
-
 </head>
 
 <body>
 
 <!-- PWA Home Button Injected -->
-<a href="index.html" style="position: fixed; bottom: 20px; right: 20px; z-index: 99999; background: rgba(15, 23, 42, 0.4); color: white; padding: 12px 24px; border-radius: 9999px; font-size: 20px; text-decoration: none; font-weight: 900; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px; font-family: 'Nunito', 'Noto Sans TC', sans-serif; transition: transform 0.2s;" oncontextmenu="return false;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.95)'" ontouchend="this.style.transform='scale(1)'">
+<a href="index.html" style="position: fixed; bottom: 20px; right: 20px; z-index: 99999; background: rgba(15, 23, 42, 0.4); color: white; padding: 12px 24px; border-radius: 9999px; font-size: 20px; text-decoration: none; font-weight: 900; backdrop-filter: blur(12px); border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px; font-family: 'Nunito', 'Noto Sans TC', sans-serif; transition: transform 0.2s;" oncontextmenu="return false;">
   <span style="font-size: 28px; line-height: 1;">🏠</span> 回大世界
 </a>
-
 
     <div class="nebula"></div>
     <div id="game-canvas"></div>
 
     <div id="cockpit-overlay">
         <!-- Top HUD -->
-        <div class="flex justify-between items-start mt-4">
-            <div class="glass-panel px-6 py-3 flex items-center gap-4">
-                <div class="text-indigo-300 text-sm font-bold uppercase tracking-widest">目標任務</div>
-                <div id="target-display" class="text-4xl font-black text-yellow-400">1</div>
+        <div class="flex flex-col items-center mt-4 pointer-events-none gap-4">
+            <div class="glass-panel px-6 py-4 flex flex-col items-center">
+                <div class="text-indigo-300 text-sm font-bold uppercase tracking-widest mb-2">尋找神秘的規律星號！</div>
+                <div id="pattern-display">
+                    <!-- Injected by JS -->
+                </div>
             </div>
-
-            <div class="glass-panel px-6 py-3 text-right">
-                <div class="text-indigo-300 text-sm font-bold uppercase tracking-widest">任務能量</div>
-                <div id="level-dots" class="text-xl text-indigo-400">⚪⚪⚪⚪⚪</div>
+            
+            <div class="glass-panel px-6 py-2 text-center pointer-events-auto">
+                <div class="text-indigo-300 text-xs font-bold uppercase">關卡</div>
+                <div id="level-dots" class="text-xl text-yellow-400 tracking-widest">⚪⚪⚪⚪⚪</div>
             </div>
         </div>
 
         <!-- Pilot Side Panel -->
         <div class="pilot-area">
             <div id="abu-pilot" class="cursor-pointer" onclick="pokeAbu()">
-                <svg width="70" height="70" viewBox="0 0 100 100">
+                <svg width="80" height="80" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="45" fill="#333" />
                     <!-- Space Helmet -->
-                    <circle cx="50" cy="45" r="30" fill="rgba(255,bbf7d0,0.2)" stroke="#bbf7d0" stroke-width="2" />
-                    <circle cx="35" cy="40" r="6" fill="white" />
+                    <circle cx="50" cy="45" r="32" fill="rgba(255,bbf7d0,0.15)" stroke="#bbf7d0" stroke-width="2" />
+                    <circle cx="35" cy="40" r="7" fill="white" />
                     <circle cx="36" cy="40" r="3" fill="black" />
-                    <circle cx="65" cy="40" r="6" fill="white" />
+                    <circle cx="65" cy="40" r="7" fill="white" />
                     <circle cx="64" cy="40" r="3" fill="black" />
-                    <path d="M 45 50 L 55 50 L 50 60 Z" fill="#fbbf24" />
+                    <path d="M 45 50 L 55 50 L 50 62 Z" fill="#fbbf24" />
                 </svg>
             </div>
             <div class="chat-bubble" id="abu-dialog">
-                澔澔，準備好了嗎？前方發現能量星！🚀
+                澔澔，觀察上面的數字規律，射中正確的隕石！🚀
             </div>
         </div>
 
         <!-- Slingshot Guide -->
         <div id="slingshot-ui">
-            <svg width="120" height="120" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"
-                    stroke-dasharray="5,5" />
-                <path d="M 50 10 L 50 90 M 10 50 L 90 50" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
-                <circle id="drag-knob" cx="50" cy="50" r="15" fill="#ef4444" stroke="white" stroke-width="4" />
+            <svg width="140" height="140" viewBox="0 0 100 100">
+                <!-- Posts -->
+                <path d="M 20 20 L 50 100 L 80 20" stroke="#94a3b8" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                
+                <!-- Elastic Bands -->
+                <line id="sling-band-left" x1="20" y1="20" x2="50" y2="50" />
+                <line id="sling-band-right" x1="80" y1="20" x2="50" y2="50" />
+                
+                <circle id="drag-knob" cx="50" cy="50" r="16" fill="#ef4444" stroke="white" stroke-width="4" />
+                <circle id="drag-knob-inner" cx="50" cy="50" r="6" fill="#fca5a5" />
             </svg>
         </div>
     </div>
@@ -238,40 +258,45 @@
     <!-- Start Screen -->
     <div id="start-screen"
         class="absolute inset-0 flex flex-col items-center justify-center p-10 text-center text-white">
-        <h1 class="text-6xl sm:text-8xl font-black mb-6 tracking-tighter drop-shadow-2xl italic">SPACE RANGER</h1>
-        <p class="text-2xl sm:text-3xl font-bold text-indigo-200 mb-16">阿布太空巡邏隊 🚀澔澔任務啟動</p>
+        <h1 class="text-6xl sm:text-8xl font-black mb-4 tracking-tighter drop-shadow-[0_0_20px_rgba(244,63,94,0.5)] italic">PATTERN SHOOTER</h1>
+        <p class="text-2xl sm:text-4xl font-bold text-rose-300 mb-12">阿布太空巡邏隊 🚀神射手任務</p>
 
         <div class="relative w-48 h-48 mb-16">
-            <div class="absolute inset-0 bg-yellow-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
-            <svg viewBox="0 0 100 100" class="relative w-full h-full drop-shadow-xl">
-                <circle cx="50" cy="50" r="45" fill="#333" />
-                <path d="M 20 80 L 10 95 L 90 95 L 80 80 Z" fill="#ef4444" />
-                <circle cx="50" cy="45" r="30" fill="rgba(255,255,255,0.1)" stroke="white" stroke-width="2" />
+            <div class="absolute inset-0 bg-rose-500 rounded-full blur-2xl opacity-30 animate-pulse"></div>
+            <svg viewBox="0 0 100 100" class="relative w-full h-full drop-shadow-2xl">
+                <circle cx="50" cy="50" r="45" fill="#1e293b" />
+                <path d="M 20 80 L 10 95 L 90 95 L 80 80 Z" fill="#e11d48" />
+                <circle cx="50" cy="45" r="30" fill="rgba(255,255,255,0.1)" stroke="#f43f5e" stroke-width="3" />
                 <path d="M 45 50 L 55 50 L 50 60 Z" fill="#fbbf24" />
+                <circle cx="35" cy="40" r="5" fill="white" />
+                <circle cx="65" cy="40" r="5" fill="white" />
             </svg>
         </div>
 
-        <button onclick="initGame()" class="btn-action px-16 py-8 rounded-full text-4xl font-black">
-            加入巡邏隊！⚡
+        <button onclick="initGame()" class="btn-action px-16 py-6 rounded-full text-4xl font-black text-white">
+            啟動彈弓！⚡
         </button>
     </div>
 
     <!-- Success Feedback Overlay -->
     <div id="success-panel"
-        class="hidden absolute inset-0 z-[50] flex flex-col items-center justify-center bg-indigo-900/40 backdrop-blur-sm pointer-events-none">
+        class="hidden absolute inset-0 z-[50] flex flex-col items-center justify-center bg-indigo-900/60 backdrop-blur-md pointer-events-none">
         <div class="text-[120px] mb-4 animate-bounce">🌟</div>
-        <h2 class="text-6xl font-black text-white italic tracking-tighter shadow-xl">MISSION CLEAR!</h2>
+        <h2 class="text-6xl font-black text-white italic tracking-tighter drop-shadow-2xl">BULLSEYE!</h2>
+        <p class="text-3xl text-yellow-300 font-bold mt-4">規律找對了！太厲害了！</p>
     </div>
 
     <script>
         const { Engine, Render, Runner, World, Bodies, Composite, Events, Vector, Body } = Matter;
         let engine, runner, render;
-        let currentTarget = 1;
-        let totalTargets = 5;
+        
+        // Game State
+        let currentLevel = 1;
+        const totalLevels = 5;
+        let targetAnswer = 0;
         let isDragging = false;
         let dragStartPos = { x: 0, y: 0 };
-        let currentLevel = 1;
-
+        
         const W = window.innerWidth;
         const H = window.innerHeight;
 
@@ -299,7 +324,35 @@
         }
 
         function pokeAbu() {
-            speak(["澔澔，準備好瞄準了嗎？", "加油！你是最棒的太空巡邏員！", "發現目標了！向後拉再放開就能發射喔！", "轟的一聲，把能量星收起來！"][Math.floor(Math.random() * 4)]);
+            speak(["澔澔，拉下方的彈珠發射！", "先看看上面數字的規律，每次多多少呢？", "加油！你是最棒的太空巡邏員！", "發現目標了！向後拉再放開就能發射喔！"][Math.floor(Math.random() * 4)]);
+        }
+
+        // --- Math Pattern Logic ---
+        function generatePattern(level) {
+            // Level 1: +1 (e.g. 1, 2, 3, 4, 5)
+            // Level 2: +2 (e.g. 2, 4, 6, 8, 10)
+            // Level 3: +5 (e.g. 5, 10, 15, 20, 25)
+            // Level 4: +10 (e.g. 10, 20, 30, 40, 50)
+            // Level 5: -2 (e.g. 10, 8, 6, 4, 2)
+            
+            let start, diff;
+            if(level === 1) { start = Math.floor(Math.random()*5)+1; diff = 1; }
+            else if(level === 2) { start = Math.floor(Math.random()*4)*2 + 2; diff = 2; }
+            else if(level === 3) { start = Math.floor(Math.random()*3)*5 + 5; diff = 5; }
+            else if(level === 4) { start = Math.floor(Math.random()*5)*10 + 10; diff = 10; }
+            else { start = 12 + Math.floor(Math.random()*4)*2; diff = -2; }
+
+            let pattern = [];
+            for(let i=0; i<5; i++) {
+                pattern.push(start + (i * diff));
+            }
+            
+            // Pick a missing index (1 to 3, avoid ends if possible)
+            let missingIdx = Math.floor(Math.random()*3) + 1;
+            let answer = pattern[missingIdx];
+            pattern[missingIdx] = "?";
+            
+            return { pattern, answer, diff };
         }
 
         // --- Game Setup ---
@@ -345,40 +398,61 @@
         }
 
         function loadLevel(level) {
-            currentTarget = 1;
             currentLevel = level;
-            totalTargets = 4 + level;
             updateHUD();
+
+            // Generate Pattern
+            const data = generatePattern(level);
+            targetAnswer = data.answer;
+
+            // Render UI Pattern
+            const container = document.getElementById('pattern-display');
+            container.innerHTML = '';
+            data.pattern.forEach(num => {
+                const box = document.createElement('div');
+                box.className = num === '?' ? 'pattern-box missing' : 'pattern-box';
+                box.innerText = num;
+                container.appendChild(box);
+            });
 
             // Clear bubbles
             Composite.allBodies(engine.world).filter(b => b.label === 'bubble').forEach(b => World.remove(engine.world, b));
 
-            // Spawn target bubbles
-            for (let i = 1; i <= totalTargets; i++) {
-                spawnBubble(i);
+            // Generate candidate numbers
+            let candidates = [targetAnswer];
+            while(candidates.length < 4) { // 4 bubbles total
+                // Fake answers based on diff
+                let fake = targetAnswer + (Math.floor(Math.random()*3)+1) * (Math.random()>0.5?1:-1) * (data.diff===0?1:Math.abs(data.diff));
+                if(fake > 0 && !candidates.includes(fake)) {
+                    candidates.push(fake);
+                }
             }
+            candidates = candidates.sort(() => Math.random() - 0.5);
 
-            speak(`澔澔任務啟動！巡邏隊注意，順序找出 1 到 ${totalTargets} 號能量星！`);
+            // Spawn target bubbles
+            candidates.forEach(num => spawnBubble(num));
+
+            speak(`第 ${level} 關，找找看問號應該填多少？用彈弓射破它！`);
         }
 
         function spawnBubble(num) {
-            const size = Math.max(50, W * 0.08);
+            const size = Math.max(50, W * 0.09); // slightly larger bubbles
             const x = Math.random() * (W - size * 2) + size;
-            const y = Math.random() * (H * 0.6) + size + 50;
+            const y = Math.random() * (H * 0.4) + size + 80;
 
             const b = Bodies.circle(x, y, size / 2, {
                 restitution: 1, friction: 0, frictionAir: 0,
                 label: 'bubble',
                 render: {
-                    fillStyle: num === currentTarget ? '#fbbf24' : '#1e3a8a',
+                    fillStyle: '#1e3a8a',
                     strokeStyle: '#60a5fa',
                     lineWidth: 4,
                     sprite: { texture: createBubbleTexture(num, size) }
                 }
             });
             b.num = num;
-            // Slight initial movement
-            Body.setVelocity(b, { x: (Math.random() - 0.5) * 2, y: (Math.random() - 0.5) * 2 });
+            // Constant velocity
+            Body.setVelocity(b, { x: (Math.random() - 0.5) * 3, y: (Math.random() - 0.5) * 3 });
             World.add(engine.world, b);
         }
 
@@ -388,17 +462,17 @@
             const ctx = canvas.getContext('2d');
 
             // Outer Glow
-            ctx.shadowBlur = 10; ctx.shadowColor = '#60a5fa';
+            ctx.shadowBlur = 15; ctx.shadowColor = '#60a5fa';
 
-            // Main Bubble
+            // Asteroid / Bubble shape
             const grad = ctx.createRadialGradient(size, size, 0, size, size, size);
-            grad.addColorStop(0, 'rgba(30, 64, 175, 0.8)');
-            grad.addColorStop(1, 'rgba(56, 189, 248, 0.4)');
+            grad.addColorStop(0, 'rgba(30, 64, 175, 0.9)');
+            grad.addColorStop(1, 'rgba(96, 165, 250, 0.4)');
             ctx.fillStyle = grad;
             ctx.beginPath(); ctx.arc(size, size, size * 0.8, 0, Math.PI * 2); ctx.fill();
 
             // Text
-            ctx.font = `900 ${size * 1.2}px 'Nunito', sans-serif`;
+            ctx.font = `900 ${size * 1.0}px 'Nunito', sans-serif`;
             ctx.fillStyle = 'white';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(num, size, size + (size * 0.05));
@@ -409,14 +483,16 @@
         function setupControls() {
             const ui = document.getElementById('slingshot-ui');
             const knob = document.getElementById('drag-knob');
-            const centerX = 60, centerY = 60; // Local within SVG
+            const inner = document.getElementById('drag-knob-inner');
+            const bandL = document.getElementById('sling-band-left');
+            const bandR = document.getElementById('sling-band-right');
+            
+            const maxPull = 45;
 
             ui.addEventListener('mousedown', startDrag);
             ui.addEventListener('touchstart', startDrag, { passive: false });
-
             window.addEventListener('mousemove', drag);
             window.addEventListener('touchmove', drag, { passive: false });
-
             window.addEventListener('mouseup', endDrag);
             window.addEventListener('touchend', endDrag);
 
@@ -432,14 +508,26 @@
                 const pos = getPos(e);
                 const dx = pos.x - dragStartPos.x;
                 const dy = pos.y - dragStartPos.y;
-                const dist = Math.min(60, Math.hypot(dx, dy));
+                const dist = Math.min(maxPull, Math.hypot(dx, dy));
                 const angle = Math.atan2(dy, dx);
 
-                const ux = Math.cos(angle) * dist;
-                const uy = Math.sin(angle) * dist;
+                // Ensure pull is downwards
+                if(dy > 0 || dist < 10) {
+                    const ux = Math.cos(angle) * dist;
+                    const uy = Math.sin(angle) * dist;
 
-                knob.setAttribute('cx', 50 + ux / 1.2);
-                knob.setAttribute('cy', 50 + uy / 1.2);
+                    const nx = 50 + ux;
+                    const ny = 50 + uy;
+                    knob.setAttribute('cx', nx);
+                    knob.setAttribute('cy', ny);
+                    inner.setAttribute('cx', nx);
+                    inner.setAttribute('cy', ny);
+
+                    bandL.setAttribute('x2', nx);
+                    bandL.setAttribute('y2', ny);
+                    bandR.setAttribute('x2', nx);
+                    bandR.setAttribute('y2', ny);
+                }
             }
 
             function endDrag() {
@@ -452,11 +540,16 @@
                 const dx = 50 - knobX;
                 const dy = 50 - knobY;
 
-                if (Math.hypot(dx, dy) > 10) {
-                    fireBullet(dx * 0.4, dy * 0.4);
+                // Fire if pulled back enough
+                if (dy > 10) {
+                    // Normalize power
+                    const power = Math.hypot(dx, dy) / maxPull; 
+                    fireBullet(dx * 0.5, dy * 0.5);
                 }
 
-                gsap.to(knob, { attr: { cx: 50, cy: 50 }, duration: 0.3, ease: "elastic.out(1, 0.3)" });
+                // Snap back UI
+                gsap.to([knob, inner], { attr: { cx: 50, cy: 50 }, duration: 0.3, ease: "elastic.out(1, 0.3)" });
+                gsap.to([bandL, bandR], { attr: { x2: 50, y2: 50 }, duration: 0.3, ease: "elastic.out(1, 0.3)" });
             }
 
             function getPos(e) {
@@ -466,82 +559,80 @@
         }
 
         function fireBullet(vx, vy) {
-            playSfx(800, 'triangle', 0.2);
-            const b = Bodies.circle(W / 2, H - 100, 15, {
+            playSfx(800, 'square', 0.2);
+            
+            // Start position matching the slingshot DOM position
+            const b = Bodies.circle(W / 2, H - 120, 15, {
                 restitution: 0.9, frictionAir: 0,
                 label: 'bullet',
-                render: { fillStyle: '#fbbf24', strokeStyle: '#fff', lineWidth: 2 }
+                render: { fillStyle: '#f43f5e', strokeStyle: '#fff', lineWidth: 3 }
             });
             Body.setVelocity(b, { x: vx, y: vy });
             World.add(engine.world, b);
 
-            // Remove bullet after 4 seconds
+            // Remove bullet after 4 seconds to save memory
             setTimeout(() => {
                 if (b.world) World.remove(engine.world, b);
             }, 4000);
         }
 
         function checkHit(bullet, bubble) {
-            if (bubble.num === currentTarget) {
+            if (bubble.num === targetAnswer) {
                 // Correct Hit
-                playSfx(1200, 'sine', 0.4);
-                confetti({ particleCount: 40, spread: 60, origin: { x: bubble.position.x / W, y: bubble.position.y / H } });
+                playSfx(1200, 'sine', 0.5);
+                confetti({ particleCount: 80, spread: 80, origin: { x: bubble.position.x / W, y: bubble.position.y / H } });
 
                 World.remove(engine.world, bubble);
                 World.remove(engine.world, bullet);
 
-                currentTarget++;
-                updateHUD();
-
-                if (currentTarget > totalTargets) {
-                    handleLevelComplete();
-                } else {
-                    speak(`${currentTarget - 1} 號收集完成！再來是 ${currentTarget} 號在哪裡呢？`);
-                }
+                handleLevelComplete();
             } else {
                 // Wrong Hit
-                playSfx(300, 'square', 0.2);
-                // Just bounce back bullet
-                speak(`不對喔！這是 ${bubble.num} 號，我們要找的是 ${currentTarget} 號！`);
-                gsap.fromTo(document.getElementById('target-display'), { color: '#ef4444' }, { color: '#fbbf24', duration: 0.5 });
+                playSfx(300, 'square', 0.3);
+                speak(`不對喔！這個數字放進去不合規律！我們再試一次！`);
+                World.remove(engine.world, bubble);
+                World.remove(engine.world, bullet);
+                // Respawn the wrong bubble so the screen isn't empty
+                setTimeout(() => { spawnBubble(bubble.num); }, 500);
+                
+                gsap.fromTo('#pattern-display', { x: -10 }, { x: 10, repeat: 3, yoyo: true, duration: 0.05 });
             }
         }
 
         function handleLevelComplete() {
             const panel = document.getElementById('success-panel');
             panel.classList.remove('hidden');
-            speak(`澔澔太聰明了！第 ${currentLevel} 關任務完美達成！🚀`);
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            speak(`澔澔太聰明了！數字 ${targetAnswer} 填上去剛剛好！🚀`);
+            confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
 
             setTimeout(() => {
                 panel.classList.add('hidden');
                 currentLevel++;
-                if (currentLevel > 5) currentLevel = 1;
+                if (currentLevel > totalLevels) currentLevel = 1;
                 loadLevel(currentLevel);
             }, 3000);
         }
 
         function updateHUD() {
-            document.getElementById('target-display').innerText = currentTarget;
             let dots = '';
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < totalLevels; i++) {
                 dots += i < currentLevel - 1 ? '⭐' : (i === currentLevel - 1 ? '🌟' : '⚪');
             }
             document.getElementById('level-dots').innerText = dots;
         }
 
         function updateLoop() {
-            // Logic for pulsing the current target (Scaffolding hint)
+            // Re-apply velocity to bubbles to prevent them from stopping due to collisions
             const bodies = Composite.allBodies(engine.world);
             bodies.forEach(b => {
                 if (b.label === 'bubble') {
-                    if (b.num === currentTarget) {
-                        // We can't easily add CSS classes to Matter.js bodies, 
-                        // so we manually fluctuate their stroke width or render state
-                        const t = Date.now() / 200;
-                        b.render.lineWidth = 4 + Math.sin(t) * 2;
-                    } else {
-                        b.render.lineWidth = 2;
+                    // Keep speed constant
+                    const speed = Vector.magnitude(b.velocity);
+                    if (speed < 2) {
+                        Body.applyForce(b, b.position, { 
+                            x: (Math.random() - 0.5) * 0.005, 
+                            y: (Math.random() - 0.5) * 0.005 
+                        });
                     }
                 }
             });

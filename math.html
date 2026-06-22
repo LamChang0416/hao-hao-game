@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>阿布超市小星探 🚀 (真實物理版)</title>
+    <title>阿布超市小星探 🚀 (真實算錢版)</title>
     
     <!-- Tailwind CSS for UI -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -48,12 +48,13 @@
 
         /* Glassmorphism Components */
         .glass-card {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 2px solid rgba(255, 255, 255, 0.8);
-            box-shadow: 0 8px 32px 0 rgba(22, 101, 52, 0.1);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 8px 32px 0 rgba(22, 101, 52, 0.15);
             pointer-events: auto;
+            border-radius: 20px;
         }
 
         /* Bouncy Buttons */
@@ -78,6 +79,10 @@
             transition: all 0.1s;
             pointer-events: auto;
             box-shadow: 0 6px 0 0 #dcfce7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
         }
         .num-btn:active {
             transform: translateY(4px);
@@ -114,11 +119,47 @@
         /* Numpad appearance */
         #numpad-container {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 10px;
             padding: 15px;
             border-radius: 30px;
+            width: 300px;
         }
+
+        /* Receipt */
+        #receipt {
+            position: absolute;
+            right: 20px;
+            top: 100px;
+            width: 200px;
+            background: #fff;
+            border: 2px dashed #9ca3af;
+            border-radius: 0 0 10px 10px;
+            padding: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            pointer-events: auto;
+            transform-origin: top center;
+            display: none;
+        }
+        #receipt-items { font-family: monospace; font-size: 1.2rem; color: #374151; }
+        .receipt-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .receipt-total { border-top: 2px dashed #9ca3af; margin-top: 10px; padding-top: 10px; font-weight: 900; color: #dc2626; }
+
+        /* Price Board */
+        #price-board {
+            position: absolute;
+            left: 20px;
+            top: 120px;
+            width: 180px;
+            background: #fef08a;
+            border: 4px solid #ca8a04;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 8px 16px rgba(202, 138, 4, 0.2);
+            pointer-events: auto;
+            transform: rotate(-3deg);
+        }
+        .price-item { display: flex; justify-content: space-between; font-size: 1.5rem; font-weight: 900; margin-bottom: 5px; color: #854d0e; }
     </style>
 
     <!-- PWA Setup -->
@@ -127,23 +168,13 @@
     <link rel="apple-touch-icon" href="icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <script>
-      // Automatically register SW
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').catch(()=>{});
-        });
-      }
-    </script>
-
 </head>
 <body>
 
-<!-- PWA Home Button Injected -->
-<a href="index.html" style="position: fixed; bottom: 20px; right: 20px; z-index: 99999; background: rgba(15, 23, 42, 0.4); color: white; padding: 12px 24px; border-radius: 9999px; font-size: 20px; text-decoration: none; font-weight: 900; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px; font-family: 'Nunito', 'Noto Sans TC', sans-serif; transition: transform 0.2s;" oncontextmenu="return false;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.95)'" ontouchend="this.style.transform='scale(1)'">
+<!-- PWA Home Button -->
+<a href="index.html" style="position: fixed; bottom: 20px; right: 20px; z-index: 99999; background: rgba(15, 23, 42, 0.4); color: white; padding: 12px 24px; border-radius: 9999px; font-size: 20px; text-decoration: none; font-weight: 900; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px; transition: transform 0.2s;" oncontextmenu="return false;">
   <span style="font-size: 28px; line-height: 1;">🏠</span> 回大世界
 </a>
-
 
     <!-- Matter.js Viewport -->
     <div id="game-canvas"></div>
@@ -153,7 +184,7 @@
         
         <!-- Header: A-Bu Dialogue & Level -->
         <div class="flex justify-between items-start mt-4">
-            <div class="flex items-center gap-4 w-[80%] pointer-events-auto">
+            <div class="flex items-center gap-4 w-[70%] pointer-events-auto">
                 <div class="floating shrink-0 cursor-pointer" onclick="pokeAbu()">
                     <svg width="80" height="80" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="45" fill="#333" />
@@ -167,28 +198,55 @@
                     </svg>
                 </div>
                 <div class="chat-bubble" id="abu-dialog">
-                    澔澔，幫我把輸送帶上的東西放進籃子裡吧！
+                    澔澔，看著價目表，幫我算出總共要多少錢喔！
                 </div>
             </div>
-            <div class="glass-card rounded-2xl px-5 py-2 pointer-events-auto">
+            <div class="glass-card px-4 py-2 pointer-events-auto">
                 <div id="stars-track" class="text-2xl sm:text-3xl tracking-tighter text-yellow-500">⚪⚪⚪⚪⚪</div>
             </div>
         </div>
 
-        <!-- Middle: Checkout Counter (Visualized by Matter.js) -->
-        <div class="flex-grow flex flex-col justify-center items-center">
-            <!-- Hints can appear here -->
+        <!-- Price Board -->
+        <div id="price-board">
+            <div class="text-center font-black text-lg text-orange-800 border-b-2 border-orange-300 pb-2 mb-2">⭐ 今日特價 ⭐</div>
+            <div id="price-list"></div>
         </div>
+
+        <!-- Receipt -->
+        <div id="receipt">
+            <div class="text-center font-bold text-gray-500 mb-2">🧾 阿布超市發票</div>
+            <div id="receipt-items"></div>
+            <div class="receipt-row receipt-total text-xl">
+                <span>總計：</span>
+                <span id="receipt-sum">$ ?</span>
+            </div>
+        </div>
+
+        <!-- Middle: Checkout Counter (Visualized by Matter.js) -->
+        <div class="flex-grow flex flex-col justify-center items-center pointer-events-none"></div>
 
         <!-- Bottom: User Input Panel -->
         <div class="mb-4 flex flex-col items-center">
-            <div id="numpad-container" class="glass-card hidden w-full max-w-[500px]">
-                <!-- Generated buttons -->
-            </div>
-            <div class="mt-4 pointer-events-auto">
-                <button id="checkout-btn" class="btn-green text-3xl font-black px-12 py-5 rounded-full hidden" onclick="checkTotal()">
-                    數好了！點我看答案 🧐
-                </button>
+            
+            <!-- Numpad -->
+            <div id="input-area" class="glass-card hidden flex-col items-center p-4">
+                <div class="text-3xl font-black text-green-800 mb-4 bg-green-100 px-8 py-2 rounded-xl border-4 border-green-300">
+                    目前輸入：$<span id="user-input">0</span>
+                </div>
+                <div id="numpad-container">
+                    <button class="num-btn" onclick="addNum(1)">1</button>
+                    <button class="num-btn" onclick="addNum(2)">2</button>
+                    <button class="num-btn" onclick="addNum(3)">3</button>
+                    <button class="num-btn" onclick="addNum(4)">4</button>
+                    <button class="num-btn" onclick="addNum(5)">5</button>
+                    <button class="num-btn" onclick="addNum(6)">6</button>
+                    <button class="num-btn" onclick="addNum(7)">7</button>
+                    <button class="num-btn" onclick="addNum(8)">8</button>
+                    <button class="num-btn" onclick="addNum(9)">9</button>
+                    <button class="num-btn bg-red-100 text-red-600 border-red-300" onclick="clearNum()">清除</button>
+                    <button class="num-btn" onclick="addNum(0)">0</button>
+                    <button class="num-btn bg-green-500 text-white border-green-600 shadow-[0_6px_0_0_#166534]" onclick="submitAnswer()">結帳</button>
+                </div>
             </div>
         </div>
     </div>
@@ -196,28 +254,29 @@
     <!-- Start Overlay -->
     <div id="start-screen" class="absolute inset-0 z-[100] flex flex-col items-center justify-center text-center p-8">
         <h1 class="text-6xl sm:text-8xl font-black text-white drop-shadow-2xl mb-4">阿布超市</h1>
-        <p class="text-2xl sm:text-3xl text-green-100 font-bold mb-12">澔澔專屬小星探 🛒✨</p>
+        <p class="text-2xl sm:text-3xl text-green-100 font-bold mb-12">結帳小星探 🛒✨</p>
         
         <div class="relative mb-16 transform scale-150">
             <svg width="120" height="120" viewBox="0 0 100 100" class="filter drop-shadow-xl">
                 <circle cx="50" cy="50" r="45" fill="#333" />
                 <path d="M 45 45 L 55 45 L 50 60 Z" fill="#fbbf24" />
                 <rect x="25" y="70" width="50" height="20" fill="#22c55e" rx="4" stroke="white" stroke-width="2" />
+                <text x="50" y="85" font-size="14" font-weight="bold" fill="white" text-anchor="middle">$</text>
             </svg>
         </div>
 
         <button onclick="initGame()" class="btn-green text-4xl font-black px-16 py-8 rounded-full">
-            進去買東西囉！🚀
+            開始收銀囉！🚀
         </button>
     </div>
 
     <!-- Victory Pop-up -->
     <div id="victory-screen" class="hidden absolute inset-0 z-[200] flex items-center justify-center bg-white/90 backdrop-blur-md p-6">
         <div class="flex flex-col items-center">
-            <div class="text-[120px] mb-4">🍎🍌🥛</div>
-            <h2 id="victory-title" class="text-5xl sm:text-7xl font-black text-green-700 mb-8 animate-bounce">澔澔太聰明了！</h2>
+            <div class="text-[120px] mb-4">🛒💯</div>
+            <h2 id="victory-title" class="text-5xl sm:text-7xl font-black text-green-700 mb-8 animate-bounce">結帳正確！</h2>
             <button onclick="nextLevel()" class="btn-green text-3xl font-black px-16 py-6 rounded-full">
-                繼續下一關 🔥
+                下一位客人 🔥
             </button>
         </div>
     </div>
@@ -230,12 +289,22 @@
             if (!audio) audio = new AudioCtx();
             if (audio.state === 'suspended') audio.resume();
         }
-        function playChime(freq = 880, dur = 0.1) {
+        function playBeep() {
             if (!audio) return;
             const osc = audio.createOscillator();
             const gain = audio.createGain();
-            osc.connect(gain);
-            gain.connect(audio.destination);
+            osc.connect(gain); gain.connect(audio.destination);
+            osc.frequency.setValueAtTime(1500, audio.currentTime);
+            gain.gain.setValueAtTime(0, audio.currentTime);
+            gain.gain.linearRampToValueAtTime(0.1, audio.currentTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.01, audio.currentTime + 0.1);
+            osc.start(); osc.stop(audio.currentTime + 0.1);
+        }
+        function playChime(freq = 880, dur = 0.3) {
+            if (!audio) return;
+            const osc = audio.createOscillator();
+            const gain = audio.createGain();
+            osc.connect(gain); gain.connect(audio.destination);
             osc.frequency.setValueAtTime(freq, audio.currentTime);
             gain.gain.setValueAtTime(0, audio.currentTime);
             gain.gain.linearRampToValueAtTime(0.2, audio.currentTime + 0.02);
@@ -253,17 +322,32 @@
         }
 
         function pokeAbu() {
-            speak(["澔澔，這些水果看起來好好吃！", "幫我數數看我們要買幾個？", "我不小心跌倒了，快來幫我！", "加油澔澔，你是數數天才！"][Math.floor(Math.random()*4)]);
+            speak(["澔澔，這些水果看起來好好吃！", "幫我算算看總共多少錢？", "小一的數學對你來說太簡單啦！", "加油澔澔，你是結帳天才！"][Math.floor(Math.random()*4)]);
         }
 
-        // --- Matter.js Setup ---
-        const { Engine, Render, Runner, World, Bodies, Composite, MouseConstraint, Mouse, Events, Body } = Matter;
-        let engine, runner, render;
+        // --- Store Data ---
+        const catalog = [
+            { icon: '🍎', price: 5 },
+            { icon: '🍌', price: 3 },
+            { icon: '🥛', price: 10 },
+            { icon: '🍪', price: 2 },
+            { icon: '🍊', price: 6 },
+            { icon: '🥦', price: 8 },
+            { icon: '🍞', price: 12 },
+            { icon: '🥚', price: 4 }
+        ];
+
+        let activeItems = []; // Items available in this level
+        let expectedTotal = 0;
         let itemsInCart = 0;
         let targetCount = 0;
         let currentLevel = 1;
         const totalLevels = 5;
+        let userInputString = "";
 
+        // --- Matter.js Setup ---
+        const { Engine, Render, Runner, World, Bodies, Composite, MouseConstraint, Mouse, Events, Body } = Matter;
+        let engine, runner, render;
         const W = window.innerWidth;
         const H = window.innerHeight;
 
@@ -285,60 +369,34 @@
 
             // Boundaries
             const ground = Bodies.rectangle(W/2, H + 50, W*2, 100, { isStatic: true });
-            const ceiling = Bodies.rectangle(W/2, -100, W*2, 100, { isStatic: true }); // Prevent flying out
+            const ceiling = Bodies.rectangle(W/2, -100, W*2, 100, { isStatic: true });
             const leftWall = Bodies.rectangle(-50, H/2, 100, H*2, { isStatic: true });
             const rightWall = Bodies.rectangle(W + 50, H/2, 100, H*2, { isStatic: true });
             
-            // The Shopping Cart
-            const cartBottom = Bodies.rectangle(W*0.75, H*0.9, 250, 20, { 
+            // Cart Position (Adjusted to not overlap UI too much)
+            const cartBottom = Bodies.rectangle(W*0.7, H*0.8, 200, 20, { 
                 isStatic: true, render: { fillStyle: '#166534' }, label: 'cart' 
             });
-            const cartLeft = Bodies.rectangle(W*0.75 - 120, H*0.82, 20, 150, { 
+            const cartLeft = Bodies.rectangle(W*0.7 - 100, H*0.7, 20, 150, { 
                 isStatic: true, render: { fillStyle: '#22c55e' }, angle: -0.2, label: 'cart'
             });
-            const cartRight = Bodies.rectangle(W*0.75 + 120, H*0.82, 20, 150, { 
+            const cartRight = Bodies.rectangle(W*0.7 + 100, H*0.7, 20, 150, { 
                 isStatic: true, render: { fillStyle: '#22c55e' }, angle: 0.2, label: 'cart'
             });
 
-            // Pachinko Machine Elements (Slides & Gears)
-            // Tray 1: Slopes Right
-            const tray1 = Bodies.rectangle(W*0.25, H*0.25, W*0.4, 20, { 
-                isStatic: true, angle: 0.1, render: { fillStyle: '#334155' }, label: 'conveyor'
+            // Scanners / Trays
+            const tray1 = Bodies.rectangle(W*0.3, H*0.3, W*0.4, 20, { 
+                isStatic: true, angle: 0.15, render: { fillStyle: '#334155' }
             });
-            
-            // Tray 2: Catch from Tray 1, Slopes Left
-            const tray2 = Bodies.rectangle(W*0.7, H*0.45, W*0.5, 20, {
-                isStatic: true, angle: -0.12, render: { fillStyle: '#f59e0b' }
-            });
-
-            // Spinning Gear
-            const gearPart1 = Bodies.rectangle(W*0.35, H*0.6, 160, 25, { render: { fillStyle: '#3b82f6' } });
-            const gearPart2 = Bodies.rectangle(W*0.35, H*0.6, 25, 160, { render: { fillStyle: '#3b82f6' } });
-            const gearComposite = Body.create({
-                parts: [gearPart1, gearPart2],
-                friction: 0.1,
-                restitution: 0.6
-            });
-            const gearConstraint = Matter.Constraint.create({
-                pointA: { x: W*0.35, y: H*0.6 },
-                bodyB: gearComposite,
-                pointB: { x: 0, y: 0 },
-                stiffness: 1, length: 0, render: { visible: false }
-            });
-
-            // Tray 3: Slopes Right into the Cart
-            const tray3 = Bodies.rectangle(W*0.45, H*0.8, W*0.5, 20, {
-                isStatic: true, angle: 0.15, render: { fillStyle: '#eab308' }
+            const tray2 = Bodies.rectangle(W*0.5, H*0.5, W*0.4, 20, {
+                isStatic: true, angle: -0.15, render: { fillStyle: '#ef4444' } // Scanner red bed
             });
 
             World.add(engine.world, [
                 ground, ceiling, leftWall, rightWall, 
-                cartBottom, cartLeft, cartRight, 
-                tray1, tray2, tray3, 
-                gearComposite, gearConstraint
+                cartBottom, cartLeft, cartRight, tray1, tray2
             ]);
 
-            // Add Mouse Control
             const mouse = Mouse.create(render.canvas);
             const mouseConstraint = MouseConstraint.create(engine, {
                 mouse: mouse,
@@ -350,15 +408,20 @@
             Events.on(engine, 'collisionStart', (event) => {
                 event.pairs.forEach(pair => {
                     const { bodyA, bodyB } = pair;
-                    // If an item touches the cart bottom
                     if ((bodyA.label === 'item' && bodyB.label === 'cart') || 
                         (bodyB.label === 'item' && bodyA.label === 'cart')) {
                         const item = bodyA.label === 'item' ? bodyA : bodyB;
                         if (!item.isCounted) {
                             item.isCounted = true;
                             itemsInCart++;
-                            playChime(440 + itemsInCart * 110, 0.2);
-                            checkPhaseProgress();
+                            
+                            // Beep & Add to receipt
+                            playBeep();
+                            addReceiptRow(item.itemData);
+
+                            if(itemsInCart === targetCount) {
+                                checkPhaseProgress();
+                            }
                         }
                     }
                 });
@@ -371,45 +434,74 @@
             loadLevel(currentLevel);
         }
 
-        const itemIcons = ['🍎', '🍌', '🥛', '🍪', '🍊', '🥦'];
-
         function loadLevel(level) {
             itemsInCart = 0;
-            targetCount = 3 + level; // DDA: Increases per level
+            expectedTotal = 0;
+            targetCount = 2 + level; // Level 1: 3 items, Level 5: 7 items
+            userInputString = "";
+            updateInputDisplay();
             updateStarsUI();
             
-            // Clear items
+            // Prepare active items for this level
+            // Pick 3-4 random items from catalog to show on price board
+            const numCatalog = Math.min(catalog.length, 3 + Math.floor(level/2));
+            const shuffledCatalog = [...catalog].sort(() => 0.5 - Math.random());
+            activeItems = shuffledCatalog.slice(0, numCatalog);
+
+            renderPriceBoard();
+            
+            // Clear receipt
+            document.getElementById('receipt').style.display = 'block';
+            document.getElementById('receipt-items').innerHTML = '';
+            document.getElementById('receipt-sum').innerText = '$ ?';
+
+            // Hide numpad initially
+            document.getElementById('input-area').style.display = 'none';
+
+            // Clear physical items
             Composite.allBodies(engine.world)
                 .filter(b => b.label === 'item')
                 .forEach(b => World.remove(engine.world, b));
 
-            // Spawn items on the top tray (Pachinko style)
+            // Generate items to drop
+            const itemsToDrop = [];
             for (let i = 0; i < targetCount; i++) {
-                setTimeout(() => {
-                    spawnItem(W*0.1 + (i*15), H*0.1);
-                }, i * 400);
+                const randItem = activeItems[Math.floor(Math.random() * activeItems.length)];
+                itemsToDrop.push(randItem);
+                expectedTotal += randItem.price;
             }
 
-            document.getElementById('numpad-container').style.display = 'none';
-            document.getElementById('checkout-btn').style.display = 'none';
-            speak(`澔澔，幫阿布數數看，把這 ${targetCount} 個好吃的東西通通放進籃子裡！`);
+            // Drop them with delay
+            itemsToDrop.forEach((itemData, index) => {
+                setTimeout(() => {
+                    spawnItem(W*0.1 + (Math.random()*50), H*0.05, itemData);
+                }, index * 800);
+            });
+
+            speak(`第 ${level} 關開始！仔細看掉下來的東西，算算總共要多少錢？`);
         }
 
-        function spawnItem(x, y) {
-            const icon = itemIcons[Math.floor(Math.random() * itemIcons.length)];
+        function renderPriceBoard() {
+            const list = document.getElementById('price-list');
+            list.innerHTML = '';
+            activeItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'price-item';
+                div.innerHTML = `<span>${item.icon}</span> <span>$${item.price}</span>`;
+                list.appendChild(div);
+            });
+        }
+
+        function spawnItem(x, y, itemData) {
             const size = 50;
             const item = Bodies.circle(x, y, size/2, {
-                restitution: 0.6,
+                restitution: 0.5,
                 friction: 0.1,
                 label: 'item',
-                render: {
-                    sprite: {
-                        // Creating a canvas texture for emojis (Better cross-platform)
-                        texture: createEmojiTexture(icon, size)
-                    }
-                }
+                render: { sprite: { texture: createEmojiTexture(itemData.icon, size) } }
             });
             item.isCounted = false;
+            item.itemData = itemData; // Store reference
             World.add(engine.world, item);
         }
 
@@ -420,61 +512,76 @@
             ctx.font = `${size}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(emoji, size, size);
+            ctx.fillText(emoji, size, size+5);
             return canvas.toDataURL();
         }
 
+        function addReceiptRow(itemData) {
+            const container = document.getElementById('receipt-items');
+            const row = document.createElement('div');
+            row.className = 'receipt-row';
+            row.innerHTML = `<span>${itemData.icon}</span> <span>$${itemData.price}</span>`;
+            container.appendChild(row);
+
+            // Animate receipt bounce
+            gsap.fromTo('#receipt', { y: -10 }, { y: 0, duration: 0.2, ease: "bounce.out" });
+        }
+
         function checkPhaseProgress() {
-            if (itemsInCart === targetCount) {
-                setTimeout(() => {
-                    speak("放好了！籃子裡面一共有幾個呢？點點看數字！");
-                    showNumpad();
-                }, 1000);
-            }
+            setTimeout(() => {
+                speak("東西都刷完了！總共要多少錢呢？點下面的數字輸入喔！");
+                document.getElementById('input-area').style.display = 'flex';
+                gsap.from('#input-area', { y: 100, opacity: 0, duration: 0.5, ease: "back.out" });
+            }, 1000);
         }
 
-        function showNumpad() {
-            const container = document.getElementById('numpad-container');
-            container.innerHTML = '';
-            container.style.display = 'grid';
-            
-            // Generate numbers 1-20
-            const max = Math.max(10, targetCount + 2);
-            for (let i = 1; i <= max; i++) {
-                const btn = document.createElement('button');
-                btn.innerText = i;
-                btn.className = 'num-btn rounded-2xl p-4';
-                btn.onclick = () => submitAnswer(i);
-                container.appendChild(btn);
+        // --- Numpad Logic ---
+        function addNum(n) {
+            if(userInputString.length < 3) {
+                if(userInputString === "0") userInputString = n.toString();
+                else userInputString += n.toString();
+                updateInputDisplay();
+                playChime(600, 0.1);
             }
-            gsap.from(container, { y: 100, opacity: 0, duration: 0.5, ease: "back.out" });
+        }
+        function clearNum() {
+            userInputString = "0";
+            updateInputDisplay();
+            playChime(400, 0.1);
+        }
+        function updateInputDisplay() {
+            document.getElementById('user-input').innerText = userInputString === "" ? "0" : userInputString;
         }
 
-        function submitAnswer(val) {
-            if (val === targetCount) {
+        function submitAnswer() {
+            const val = parseInt(userInputString, 10);
+            if (val === expectedTotal) {
+                document.getElementById('receipt-sum').innerText = `$ ${expectedTotal}`;
                 handleVictory();
             } else {
                 playChime(220, 0.4);
-                speak("差一點點喔！我們再數一次籃子裡的寶貝！");
-                // Shake the UI cart info?
+                speak(`哎呀，算錯了！總共是 ${expectedTotal} 元喔，我們再算一次！`);
+                gsap.to('#user-input', { x: 10, repeat: 3, yoyo: true, duration: 0.05 });
+                userInputString = "0";
+                updateInputDisplay();
             }
         }
 
         function handleVictory() {
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            confetti({ particleCount: 200, spread: 80, origin: { y: 0.6 } });
             playChime(1100, 0.5);
-            speak("答對了！澔澔真是阿布的算數英雄！🌟");
+            speak("收銀正確！找錢沒煩惱，澔澔太棒了！🌟");
             
             setTimeout(() => {
                 document.getElementById('victory-screen').classList.remove('hidden');
-            }, 1000);
+            }, 1500);
         }
 
         function nextLevel() {
             document.getElementById('victory-screen').classList.add('hidden');
             currentLevel++;
             if (currentLevel > totalLevels) {
-                speak("哇！澔澔幫阿布把超市的東西都數完了，你是全宇宙最強的小星探！🏆");
+                speak("哇！澔澔通過所有收銀挑戰，你是全宇宙最會算錢的小老闆！🏆");
                 currentLevel = 1;
             }
             loadLevel(currentLevel);
@@ -489,10 +596,7 @@
         }
 
         // Handle Resizing
-        window.addEventListener('resize', () => {
-            location.reload(); // Matter.js layouts are hard to reflow dynamically without full reset
-        });
-
+        window.addEventListener('resize', () => { location.reload(); });
     </script>
 </body>
 </html>
