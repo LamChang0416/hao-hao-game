@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>阿布的字母動物園 🦁</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Include A-Bu's Voice Module -->
+    <script src="abu_voice.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&family=Noto+Sans+TC:wght@800;900&display=swap');
+        
+        body, html {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(180deg, #86efac 0%, #22c55e 100%);
+            touch-action: none; user-select: none; -webkit-user-select: none;
+        }
+
+        /* Jungle Background */
+        .jungle-bg {
+            position: absolute; width: 100%; height: 100%;
+            background-image: radial-gradient(circle at 50% 120%, rgba(20, 83, 45, 0.4) 0%, transparent 60%);
+            z-index: 0; pointer-events: none;
+        }
+
+        /* HUD */
+        .glass-hud {
+            position: absolute; top: 0; left: 0; width: 100%;
+            background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.4); z-index: 20;
+            display: flex; align-items: center; justify-content: space-between; padding: 10px 20px;
+        }
+
+        /* Chat Bubble */
+        .chat-bubble {
+            background: white; border-radius: 20px; padding: 10px 15px;
+            font-weight: 900; color: #064e3b; position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .chat-bubble::after {
+            content: ''; position: absolute; left: -10px; top: 50%; transform: translateY(-50%);
+            border-width: 8px 10px 8px 0; border-style: solid; border-color: transparent white transparent transparent;
+        }
+
+        /* Animal Area */
+        #animal-area {
+            position: absolute; bottom: 15vh; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; items-center; justify-content: center;
+            z-index: 10;
+        }
+        
+        #animal-emoji {
+            font-size: 8rem; text-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            filter: drop-shadow(0 10px 10px rgba(0,0,0,0.2));
+            transition: transform 0.2s;
+        }
+        #animal-emoji.hungry { animation: bounce 1s infinite alternate ease-in-out; }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-20px); } }
+
+        #word-display {
+            background: rgba(255,255,255,0.9);
+            border: 4px solid #166534; border-radius: 20px;
+            padding: 10px 30px; font-size: 3rem; font-weight: 900; color: #166534;
+            display: flex; gap: 5px; box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            margin-top: -20px; z-index: 11; position: relative;
+        }
+        .missing-letter {
+            color: #d1d5db; border-bottom: 4px dashed #9ca3af;
+            min-width: 40px; text-align: center;
+        }
+
+        /* Letter Bubbles */
+        #bubbles-container {
+            position: absolute; top: 25vh; left: 0; width: 100%; height: 40vh;
+            display: flex; justify-content: space-around; align-items: center; z-index: 15;
+        }
+        .letter-bubble {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ffffff, #93c5fd);
+            border: 3px solid #60a5fa; box-shadow: 0 10px 20px rgba(0,0,0,0.2), inset 0 0 20px rgba(255,255,255,0.8);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 3rem; font-weight: 900; color: #1e3a8a; cursor: grab;
+            position: absolute;
+        }
+        .letter-bubble:active { cursor: grabbing; transform: scale(1.1); }
+        .floating-1 { animation: float-1 4s infinite ease-in-out; }
+        .floating-2 { animation: float-2 5s infinite ease-in-out; }
+        .floating-3 { animation: float-3 4.5s infinite ease-in-out; }
+
+        @keyframes float-1 { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        @keyframes float-2 { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
+        @keyframes float-3 { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        /* Start Screen */
+        #start-screen { background: radial-gradient(circle at center, #86efac, #14532d); }
+        .btn-action {
+            background: linear-gradient(to bottom, #fbbf24, #d97706);
+            box-shadow: 0 8px 0 0 #92400e; color: white; transition: all 0.1s;
+        }
+        .btn-action:active { transform: translateY(6px); box-shadow: 0 2px 0 0 #92400e; }
+    </style>
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#14532d">
+</head>
+<body>
+
+<a href="index.html" style="position: fixed; bottom: 20px; right: 20px; z-index: 99999; background: rgba(0,0,0,0.4); color: white; padding: 10px 20px; border-radius: 9999px; font-size: 18px; text-decoration: none; font-weight: 900; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.4);" oncontextmenu="return false;">🏠 回大世界</a>
+
+    <div class="jungle-bg"></div>
+
+    <!-- HUD -->
+    <div class="glass-hud">
+        <div class="flex items-center gap-4">
+            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center text-4xl shadow-lg border-4 border-green-500 cursor-pointer" onclick="speak('把對的英文字母，餵給下面餓肚子的小動物吧！')">
+                🐦
+            </div>
+            <div class="chat-bubble" id="abu-dialog">動物們餓了！拖曳上面的字母餵牠們！</div>
+        </div>
+        <div class="text-yellow-400 text-2xl font-black bg-green-900/50 px-4 py-2 rounded-full border-2 border-green-500" id="stars-display">⭐⭐⭐⭐⭐</div>
+    </div>
+
+    <!-- Gameplay Area -->
+    <div id="bubbles-container"></div>
+
+    <div id="animal-area">
+        <div id="animal-emoji" class="hungry text-center">🐻</div>
+        <div id="word-display">
+            <span class="missing-letter" id="letter-slot">?</span>
+            <span id="word-rest">EAR</span>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="absolute inset-0 z-[100] flex flex-col items-center justify-center text-center p-8">
+        <h1 class="text-5xl sm:text-7xl font-black text-white drop-shadow-2xl mb-4">阿布字母動物園</h1>
+        <p class="text-2xl sm:text-3xl text-green-100 font-bold mb-12">英文字母餵食秀 🐘</p>
+        <button onclick="initGame()" class="btn-action text-4xl font-black px-16 py-6 rounded-full">開園囉！</button>
+    </div>
+
+    <!-- Success Screen -->
+    <div id="success-screen" class="hidden absolute inset-0 z-[200] flex flex-col items-center justify-center bg-green-900/90 backdrop-blur-md p-6">
+        <div class="text-[150px] mb-4 animate-bounce" id="win-emoji">🐻</div>
+        <h2 class="text-6xl font-black text-white mb-4" id="win-word">BEAR</h2>
+        <p class="text-3xl text-yellow-300 font-bold mb-12" id="win-zh">熊</p>
+        <button onclick="nextLevel()" class="btn-action text-3xl font-black px-12 py-4 rounded-full">下一隻動物 🔥</button>
+    </div>
+
+    <script>
+        const words = [
+            { en: 'APPLE', zh: '蘋果', emoji: '🍎', target: 'A' },
+            { en: 'BEAR', zh: '熊熊', emoji: '🐻', target: 'B' },
+            { en: 'CAT', zh: '貓咪', emoji: '🐱', target: 'C' },
+            { en: 'DOG', zh: '狗狗', emoji: '🐶', target: 'D' },
+            { en: 'ELEPHANT', zh: '大象', emoji: '🐘', target: 'E' },
+            { en: 'FROG', zh: '青蛙', emoji: '🐸', target: 'F' },
+            { en: 'PIG', zh: '小豬', emoji: '🐷', target: 'P' },
+            { en: 'SUN', zh: '太陽', emoji: '☀️', target: 'S' }
+        ];
+
+        let currentLevel = 0;
+        let activeWords = [];
+        let currentWord = null;
+        let isDragging = false;
+        let draggedBubble = null;
+        let startPos = {x:0, y:0};
+        
+        function initGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            // Pick 5 random words for this session
+            activeWords = words.sort(() => 0.5 - Math.random()).slice(0, 5);
+            currentLevel = 0;
+            loadLevel();
+        }
+
+        function updateStars() {
+            let stars = '';
+            for(let i=0; i<5; i++) {
+                stars += i < currentLevel ? '🌟' : '⚪';
+            }
+            document.getElementById('stars-display').innerText = stars;
+        }
+
+        function loadLevel() {
+            if(currentLevel >= 5) {
+                if(window.speak) window.speak("太棒了！澔澔把動物園裡所有的動物都餵飽了！");
+                currentLevel = 0;
+                setTimeout(() => { document.getElementById('start-screen').style.display = 'flex'; }, 2000);
+                return;
+            }
+
+            updateStars();
+            currentWord = activeWords[currentLevel];
+            
+            document.getElementById('animal-emoji').innerText = currentWord.emoji;
+            document.getElementById('animal-emoji').classList.add('hungry');
+            document.getElementById('word-rest').innerText = currentWord.en.substring(1);
+            document.getElementById('letter-slot').innerText = '?';
+
+            generateBubbles();
+            
+            if(window.speak) window.speak(`${currentWord.zh}肚子餓了！牠想吃字母 ${currentWord.target}！`);
+        }
+
+        function generateBubbles() {
+            const container = document.getElementById('bubbles-container');
+            container.innerHTML = '';
+            
+            // Need target + 2 random letters
+            let options = [currentWord.target];
+            while(options.length < 3) {
+                let r = String.fromCharCode(65 + Math.floor(Math.random()*26));
+                if(!options.includes(r)) options.push(r);
+            }
+            options.sort(() => 0.5 - Math.random()); // shuffle
+
+            options.forEach((letter, index) => {
+                const b = document.createElement('div');
+                b.className = `letter-bubble floating-${index+1}`;
+                b.innerText = letter;
+                // Distribute evenly
+                b.style.left = `${10 + index*30}%`;
+                b.style.top = `${10 + Math.random()*20}%`;
+                
+                // Touch/Mouse events
+                b.addEventListener('mousedown', startDrag);
+                b.addEventListener('touchstart', startDrag, {passive: false});
+                
+                container.appendChild(b);
+            });
+            
+            // Global move/end
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('touchmove', drag, {passive: false});
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchend', endDrag);
+        }
+
+        function startDrag(e) {
+            isDragging = true;
+            draggedBubble = e.target;
+            draggedBubble.style.animation = 'none'; // stop floating
+            draggedBubble.style.zIndex = '100';
+            const pos = getPos(e);
+            // Center bubble on cursor
+            gsap.to(draggedBubble, {left: pos.x - 40, top: pos.y - 40, duration: 0.1});
+        }
+
+        function drag(e) {
+            if(!isDragging || !draggedBubble) return;
+            e.preventDefault();
+            const pos = getPos(e);
+            draggedBubble.style.left = `${pos.x - 40}px`;
+            draggedBubble.style.top = `${pos.y - 40}px`;
+        }
+
+        function endDrag(e) {
+            if(!isDragging || !draggedBubble) return;
+            isDragging = false;
+            
+            // Check collision with slot
+            const slot = document.getElementById('letter-slot');
+            const slotRect = slot.getBoundingClientRect();
+            const bubRect = draggedBubble.getBoundingClientRect();
+            
+            const isOverlap = !(bubRect.right < slotRect.left || 
+                                bubRect.left > slotRect.right || 
+                                bubRect.bottom < slotRect.top || 
+                                bubRect.top > slotRect.bottom);
+                                
+            if(isOverlap) {
+                checkAnswer(draggedBubble.innerText);
+            } else {
+                // Snap back (fallback)
+                gsap.to(draggedBubble, {top: '20%', duration: 0.5, ease: "bounce.out"});
+            }
+            
+            draggedBubble.style.zIndex = '15';
+            draggedBubble = null;
+        }
+
+        function getPos(e) {
+            return {
+                x: e.touches ? e.touches[0].clientX : e.clientX,
+                y: e.touches ? e.touches[0].clientY : e.clientY
+            };
+        }
+
+        function checkAnswer(letter) {
+            if(letter === currentWord.target) {
+                // Correct
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                const actx = new AudioCtx();
+                const osc = actx.createOscillator(); osc.connect(actx.destination);
+                osc.frequency.value = 800; osc.start(); osc.stop(actx.currentTime + 0.1);
+                
+                document.getElementById('letter-slot').innerText = letter;
+                document.getElementById('letter-slot').style.color = '#fbbf24';
+                document.getElementById('animal-emoji').classList.remove('hungry');
+                
+                // Hide bubbles
+                document.getElementById('bubbles-container').innerHTML = '';
+                
+                confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+                
+                if(window.speak) window.speak(`${currentWord.target}! ${currentWord.en}! 沒錯，就是${currentWord.zh}！`);
+                
+                setTimeout(() => {
+                    document.getElementById('win-emoji').innerText = currentWord.emoji;
+                    document.getElementById('win-word').innerText = currentWord.en;
+                    document.getElementById('win-zh').innerText = currentWord.zh;
+                    document.getElementById('success-screen').classList.remove('hidden');
+                }, 2000);
+            } else {
+                // Wrong
+                if(window.speak) window.speak(`哎呀，不對喔！這隻${currentWord.zh}想吃的是 ${currentWord.target}！`);
+                gsap.fromTo('#animal-emoji', {x: -20}, {x: 20, yoyo: true, repeat: 3, duration: 0.05});
+                gsap.to(draggedBubble, {top: '10%', duration: 0.5, ease: "back.out"});
+            }
+        }
+
+        function nextLevel() {
+            document.getElementById('success-screen').classList.add('hidden');
+            currentLevel++;
+            loadLevel();
+        }
+    </script>
+</body>
+</html>

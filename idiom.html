@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>阿布成語神探 🐉</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="abu_voice.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@900&family=Nunito:wght@900&display=swap');
+        
+        body, html {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            font-family: 'Nunito', 'Noto Serif TC', sans-serif;
+            background: linear-gradient(135deg, #fcd34d 0%, #d97706 100%);
+            touch-action: none; user-select: none; -webkit-user-select: none;
+        }
+
+        /* HUD */
+        .glass-hud {
+            position: absolute; top: 0; left: 0; width: 100%;
+            background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(12px);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.5); z-index: 20;
+            display: flex; align-items: center; justify-content: space-between; padding: 10px 20px;
+        }
+
+        .chat-bubble {
+            background: white; border-radius: 20px; padding: 10px 15px;
+            font-weight: 900; color: #78350f; position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+        }
+        .chat-bubble::after {
+            content: ''; position: absolute; left: -10px; top: 50%; transform: translateY(-50%);
+            border-width: 8px 10px 8px 0; border-style: solid; border-color: transparent white transparent transparent;
+        }
+
+        /* Stage Area */
+        #stage-area {
+            position: absolute; top: 12vh; left: 50%; transform: translateX(-50%);
+            width: 90vw; max-width: 600px; height: 35vh;
+            background: rgba(255, 255, 255, 0.9); border: 6px solid #b45309;
+            border-radius: 24px; box-shadow: 0 15px 30px rgba(180, 83, 9, 0.4);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        #animation-emoji {
+            font-size: 6rem; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.2));
+        }
+
+        /* Puzzle Slots */
+        #slots-container {
+            display: flex; gap: 10px; margin-top: 20px;
+        }
+        .slot {
+            width: 70px; height: 70px;
+            background: rgba(0, 0, 0, 0.1); border: 3px dashed #b45309;
+            border-radius: 12px; display: flex; justify-content: center; align-items: center;
+        }
+
+        /* Stone Blocks */
+        #blocks-container {
+            position: absolute; bottom: 10vh; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;
+            width: 90vw; max-width: 500px;
+        }
+        .stone-block {
+            width: 70px; height: 70px;
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 4px solid #d97706; border-radius: 12px;
+            box-shadow: 0 8px 0 #b45309, 0 15px 20px rgba(0,0,0,0.3);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 2.5rem; font-weight: 900; color: #78350f;
+            cursor: grab; position: relative;
+            transition: transform 0.1s;
+        }
+        .stone-block:active { cursor: grabbing; }
+
+        #start-screen { background: radial-gradient(circle at center, #f59e0b, #78350f); }
+        .btn-action {
+            background: linear-gradient(to bottom, #10b981, #047857);
+            box-shadow: 0 8px 0 0 #064e3b; color: white;
+        }
+        .btn-action:active { transform: translateY(6px); box-shadow: 0 2px 0 0 #064e3b; }
+
+        .slotted {
+            box-shadow: 0 2px 0 #b45309 !important;
+            transform: translateY(6px);
+            pointer-events: none;
+            background: linear-gradient(135deg, #fcd34d, #f59e0b) !important;
+            border-color: #78350f !important;
+            color: #451a03 !important;
+        }
+    </style>
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#78350f">
+</head>
+<body>
+
+<a href="index.html" style="position: fixed; bottom: 20px; right: 20px; z-index: 99999; background: rgba(0,0,0,0.4); color: white; padding: 10px 20px; border-radius: 9999px; font-size: 18px; text-decoration: none; font-weight: 900; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.4);" oncontextmenu="return false;">🏠 回大世界</a>
+
+    <div class="glass-hud">
+        <div class="flex items-center gap-4">
+            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center text-4xl shadow-lg border-4 border-amber-500 cursor-pointer" onclick="speak('把石塊拖拉到上面的格子裡，排成正確的成語吧！')">
+                🐦
+            </div>
+            <div class="chat-bubble" id="abu-dialog">把石塊排到格子裡，完成成語！</div>
+        </div>
+        <div class="text-amber-100 text-2xl font-black bg-amber-900/50 px-4 py-2 rounded-full border-2 border-amber-500" id="stars-display">⭐⭐⭐⭐⭐</div>
+    </div>
+
+    <!-- Stage Area -->
+    <div id="stage-area">
+        <div id="animation-emoji">❓❓</div>
+        <div id="slots-container">
+            <div class="slot" data-index="0"></div>
+            <div class="slot" data-index="1"></div>
+            <div class="slot" data-index="2"></div>
+            <div class="slot" data-index="3"></div>
+        </div>
+    </div>
+
+    <div id="blocks-container"></div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="absolute inset-0 z-[100] flex flex-col items-center justify-center text-center p-8">
+        <h1 class="text-5xl sm:text-7xl font-black text-white drop-shadow-2xl mb-4" style="font-family:'Noto Serif TC'">阿布成語神探</h1>
+        <p class="text-2xl sm:text-3xl text-amber-200 font-bold mb-12">四字拼圖大搜查 🐉</p>
+        <button onclick="initGame()" class="btn-action text-4xl font-black px-16 py-6 rounded-full" style="font-family:'Nunito'">開始解謎！</button>
+    </div>
+
+    <!-- Success Screen -->
+    <div id="success-screen" class="hidden absolute inset-0 z-[200] flex flex-col items-center justify-center bg-amber-900/90 backdrop-blur-md p-6">
+        <div class="text-[120px] mb-4" id="win-emoji">🎉</div>
+        <h2 class="text-6xl font-black text-white mb-4" style="font-family:'Noto Serif TC'" id="win-word">一馬當先</h2>
+        <p class="text-2xl text-amber-200 font-bold mb-12 text-center max-w-md bg-black/30 p-6 rounded-2xl" id="win-desc">說明</p>
+        <button onclick="nextLevel()" class="btn-action text-3xl font-black px-12 py-4 rounded-full" style="font-family:'Nunito'">下一個成語 🔥</button>
+    </div>
+
+    <script>
+        const idioms = [
+            { text: "人山人海", emoji: "👨‍👩‍👦‍👦🏔️🌊", desc: "形容人非常非常多，像山一樣高，像海一樣大！", anim: "yoyo" },
+            { text: "一馬當先", emoji: "🐴🏃‍♂️💨", desc: "形容像騎著馬跑在最前面，帶領大家前進！", anim: "race" },
+            { text: "車水馬龍", emoji: "🚗🐎🚕", desc: "形容馬路上的車子和馬匹非常多，熱鬧滾滾！", anim: "bounce" },
+            { text: "五顏六色", emoji: "🎨🌈✨", desc: "形容顏色非常豐富、各種色彩都有！", anim: "color" },
+            { text: "鳥語花香", emoji: "🐦🌸🌼", desc: "聽到鳥兒唱歌，聞到花朵香味，形容春天風景很美。", anim: "float" }
+        ];
+
+        let currentLevel = 0;
+        let activeIdioms = [];
+        let currentIdiom = null;
+        let filledSlots = 0;
+
+        let draggedBlock = null;
+        let startPos = {x:0, y:0};
+        let isDragging = false;
+
+        function initGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            activeIdioms = idioms.sort(() => 0.5 - Math.random()).slice(0, 5);
+            currentLevel = 0;
+            loadLevel();
+        }
+
+        function loadLevel() {
+            if(currentLevel >= 5) {
+                if(window.speak) window.speak("太神啦！澔澔變成了成語大師！");
+                currentLevel = 0;
+                setTimeout(() => { document.getElementById('start-screen').style.display = 'flex'; }, 2000);
+                return;
+            }
+
+            let stars = '';
+            for(let i=0; i<5; i++) stars += i < currentLevel ? '🌟' : '⚪';
+            document.getElementById('stars-display').innerText = stars;
+
+            currentIdiom = activeIdioms[currentLevel];
+            filledSlots = 0;
+
+            const emojiEl = document.getElementById('animation-emoji');
+            emojiEl.innerText = currentIdiom.emoji;
+            gsap.killTweensOf(emojiEl);
+            
+            // Initial animation
+            if(currentIdiom.anim === 'race') gsap.fromTo(emojiEl, {x:-50}, {x:50, yoyo:true, repeat:-1, duration:0.5});
+            else if(currentIdiom.anim === 'yoyo') gsap.fromTo(emojiEl, {scale:0.9}, {scale:1.1, yoyo:true, repeat:-1, duration:0.5});
+            else if(currentIdiom.anim === 'bounce') gsap.fromTo(emojiEl, {y:0}, {y:-20, yoyo:true, repeat:-1, duration:0.3});
+            else if(currentIdiom.anim === 'color') gsap.fromTo(emojiEl, {rotation:-10}, {rotation:10, yoyo:true, repeat:-1, duration:1});
+            else gsap.fromTo(emojiEl, {y:-10}, {y:10, yoyo:true, repeat:-1, duration:2, ease:"sine.inOut"});
+
+            // Generate slots and blocks
+            document.getElementById('slots-container').innerHTML = `
+                <div class="slot" data-index="0"></div>
+                <div class="slot" data-index="1"></div>
+                <div class="slot" data-index="2"></div>
+                <div class="slot" data-index="3"></div>
+            `;
+
+            const blocksCont = document.getElementById('blocks-container');
+            blocksCont.innerHTML = '';
+            
+            let chars = currentIdiom.text.split('');
+            let shuffled = [...chars].sort(() => 0.5 - Math.random());
+
+            shuffled.forEach((char, i) => {
+                const b = document.createElement('div');
+                b.className = 'stone-block';
+                b.innerText = char;
+                // Need to track its original target index to allow duplicate characters (e.g. 人山人海 has two 人)
+                b.setAttribute('data-char', char);
+                
+                b.addEventListener('mousedown', startDrag);
+                b.addEventListener('touchstart', startDrag, {passive: false});
+                blocksCont.appendChild(b);
+            });
+            
+            if(window.speak) window.speak(`看上面的圖案，猜猜看是哪一個成語？把字排到格子裡！`);
+
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('touchmove', drag, {passive: false});
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchend', endDrag);
+        }
+
+        function startDrag(e) {
+            if(e.target.classList.contains('slotted')) return;
+            isDragging = true;
+            draggedBlock = e.target;
+            
+            // Set position to absolute
+            const rect = draggedBlock.getBoundingClientRect();
+            draggedBlock.style.position = 'absolute';
+            draggedBlock.style.left = `${rect.left}px`;
+            draggedBlock.style.top = `${rect.top}px`;
+            draggedBlock.style.zIndex = '100';
+            document.body.appendChild(draggedBlock); // Move to body for free drag
+            
+            playTick();
+        }
+
+        function drag(e) {
+            if(!isDragging || !draggedBlock) return;
+            e.preventDefault();
+            const pos = getPos(e);
+            draggedBlock.style.left = `${pos.x - 35}px`;
+            draggedBlock.style.top = `${pos.y - 35}px`;
+        }
+
+        function endDrag(e) {
+            if(!isDragging || !draggedBlock) return;
+            isDragging = false;
+            
+            const blockChar = draggedBlock.getAttribute('data-char');
+            let slotted = false;
+
+            const slots = document.querySelectorAll('.slot');
+            for(let slot of slots) {
+                const sRect = slot.getBoundingClientRect();
+                const bRect = draggedBlock.getBoundingClientRect();
+                
+                // Overlap check
+                const isOverlap = !(bRect.right < sRect.left || bRect.left > sRect.right || 
+                                    bRect.bottom < sRect.top || bRect.top > sRect.bottom);
+                
+                if(isOverlap) {
+                    const sIndex = parseInt(slot.getAttribute('data-index'));
+                    // Check if char matches this slot
+                    if(currentIdiom.text[sIndex] === blockChar && !slot.hasChildNodes()) {
+                        // Correct!
+                        playThud();
+                        draggedBlock.style.position = 'relative';
+                        draggedBlock.style.left = '0';
+                        draggedBlock.style.top = '0';
+                        draggedBlock.classList.add('slotted');
+                        slot.appendChild(draggedBlock);
+                        slotted = true;
+                        filledSlots++;
+                        
+                        gsap.fromTo(slot, {scale: 1.2}, {scale: 1, duration: 0.3, ease: "elastic.out"});
+                        
+                        if(filledSlots === 4) {
+                            handleVictory();
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            if(!slotted) {
+                // Return to blocks container
+                document.getElementById('blocks-container').appendChild(draggedBlock);
+                draggedBlock.style.position = 'relative';
+                draggedBlock.style.left = '0';
+                draggedBlock.style.top = '0';
+                playError();
+            }
+            
+            draggedBlock.style.zIndex = '';
+            draggedBlock = null;
+        }
+
+        function getPos(e) {
+            return {
+                x: e.touches ? e.touches[0].clientX : e.clientX,
+                y: e.touches ? e.touches[0].clientY : e.clientY
+            };
+        }
+
+        // SFX
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let actx;
+        function getActx() { if(!actx) actx = new AudioCtx(); return actx; }
+        
+        function playTick() {
+            const ctx = getActx(); const osc = ctx.createOscillator(); osc.connect(ctx.destination);
+            osc.frequency.value = 600; osc.start(); osc.stop(ctx.currentTime + 0.05);
+        }
+        function playThud() {
+            const ctx = getActx(); const osc = ctx.createOscillator(); osc.connect(ctx.destination);
+            osc.type = 'square'; osc.frequency.setValueAtTime(150, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.1);
+            osc.start(); osc.stop(ctx.currentTime + 0.1);
+        }
+        function playError() {
+            const ctx = getActx(); const osc = ctx.createOscillator(); osc.connect(ctx.destination);
+            osc.type = 'sawtooth'; osc.frequency.value = 200; osc.start(); osc.stop(ctx.currentTime + 0.1);
+        }
+
+        function handleVictory() {
+            confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
+            
+            if(window.speak) window.speak(`太厲害了！${currentIdiom.text}！${currentIdiom.desc}`);
+            
+            setTimeout(() => {
+                document.getElementById('win-emoji').innerText = currentIdiom.emoji;
+                document.getElementById('win-word').innerText = currentIdiom.text;
+                document.getElementById('win-desc').innerText = currentIdiom.desc;
+                document.getElementById('success-screen').classList.remove('hidden');
+            }, 1000);
+        }
+
+        function nextLevel() {
+            document.getElementById('success-screen').classList.add('hidden');
+            currentLevel++;
+            loadLevel();
+        }
+    </script>
+</body>
+</html>
