@@ -12,10 +12,13 @@ window.speechSynthesis.onvoiceschanged = loadVoices;
 window.abuSpeak = function(text, rate = 1.15, pitch = 1.3) {
     window.speechSynthesis.cancel();
     
+    const isApple = /Mac|iPod|iPhone|iPad/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    
     const msg = new SpeechSynthesisUtterance(text);
     msg.lang = 'zh-TW';
-    msg.rate = rate;
-    msg.pitch = pitch;
+    // Apple devices distort heavily with pitch changes, keep it close to default
+    msg.rate = isApple ? 1.05 : rate;
+    msg.pitch = isApple ? 1.0 : pitch;
 
     if (availableVoices.length === 0) {
         availableVoices = window.speechSynthesis.getVoices();
