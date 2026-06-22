@@ -160,6 +160,7 @@
         @keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
         .floating { animation: float 3s ease-in-out infinite; }
     </style>
+<script src="abu_voice.js"></script>
 </head>
 <body>
 
@@ -228,7 +229,7 @@
         const dots = document.querySelectorAll('.dot');
         
         // Voice Synth helper
-        function speak(text) {
+        function old_speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             msg.lang = 'zh-TW'; msg.rate = 1.0;

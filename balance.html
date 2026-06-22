@@ -157,6 +157,7 @@
       }
     </script>
 
+<script src="abu_voice.js"></script>
 </head>
 <body>
 
@@ -310,7 +311,7 @@
 
         // --- Speech ---
         let voiceSynthesizer = window.speechSynthesis;
-        function speak(text) {
+        function old_speak(text) {
             voiceSynthesizer.cancel(); 
             let msg = new SpeechSynthesisUtterance(text);
             msg.lang = 'zh-TW';

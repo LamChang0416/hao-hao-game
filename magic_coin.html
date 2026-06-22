@@ -102,6 +102,7 @@ body, html {
 .eq-ans { color: #4ade80; border-bottom: 4px solid #4ade80; min-width: 80px; text-align: center; display: inline-block; }
 
 </style>
+<script src="abu_voice.js"></script>
 </head>
 <body>
 
@@ -215,7 +216,7 @@ body, html {
 
 <script>
 // Audio context
-function speak(text) {
+function old_speak(text) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'zh-TW';

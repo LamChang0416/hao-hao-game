@@ -165,6 +165,7 @@
       }
     </script>
 
+<script src="abu_voice.js"></script>
 </head>
 <body>
 
@@ -247,7 +248,7 @@
         { name: '星形', type: 'star' }
     ];
 
-    function speak(text) {
+    function old_speak(text) {
         window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(text);
         msg.lang = 'zh-TW';

@@ -125,6 +125,7 @@
       }
     </script>
 
+<script src="abu_voice.js"></script>
 </head>
 <body>
 
@@ -349,7 +350,7 @@ let errorStats = { 'en': 0, 'eng': 0, 'an': 0, 'ang': 0, 'zh': 0, 'z': 0, 'sh': 
 const TONE_MARKS = { 1:'￣', 2:'ˊ', 3:'ˇ', 4:'ˋ', 5:'˙' };
 
 // Utility: Synthesis
-function speak(text, rate=1.0) {
+function old_speak(text, rate=1.0) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'zh-TW'; u.rate = rate;

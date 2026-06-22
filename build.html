@@ -187,6 +187,7 @@
       }
     </script>
 
+<script src="abu_voice.js"></script>
 </head>
 <body>
 
@@ -339,7 +340,7 @@ let placedCount = 0;
 const W = () => document.getElementById('build-zone').offsetWidth;
 const H = () => document.getElementById('build-zone').offsetHeight;
 
-function speak(text) {
+function old_speak(text) {
     window.speechSynthesis.cancel();
     const msg = new SpeechSynthesisUtterance(text);
     msg.lang = 'zh-TW'; msg.rate = 1.0;

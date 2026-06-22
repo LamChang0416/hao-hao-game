@@ -68,6 +68,7 @@ body{font-family:'Nunito','Noto Sans TC',sans-serif;min-height:100vh;
       }
     </script>
 
+<script src="abu_voice.js"></script>
 </head>
 <body>
 
@@ -270,7 +271,7 @@ function foldFinger(curCount) {
 }
 
 // ===== SPEECH =====
-function speak(text) {
+function old_speak(text) {
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'zh-TW'; u.rate = 1.0;

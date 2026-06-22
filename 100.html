@@ -155,6 +155,7 @@
       }
     </script>
 
+<script src="abu_voice.js"></script>
 </head>
 <body class="w-full h-full flex flex-col safe-area-inset-bottom safe-area-inset-top">
 
@@ -328,7 +329,7 @@
             speechSynthesis.onvoiceschanged = setupVoices;
         }
 
-        function speak(text, pitch = 1.2, rate = 1.0) {
+        function old_speak(text, pitch = 1.2, rate = 1.0) {
             voiceSynthesizer.cancel(); 
             let msg = new SpeechSynthesisUtterance(text);
             if(preferredVoice) msg.voice = preferredVoice;

@@ -168,6 +168,7 @@
     <link rel="apple-touch-icon" href="icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="abu_voice.js"></script>
 </head>
 <body>
 
@@ -312,7 +313,7 @@
             osc.start(); osc.stop(audio.currentTime + dur);
         }
 
-        function speak(text) {
+        function old_speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             msg.lang = 'zh-TW';
